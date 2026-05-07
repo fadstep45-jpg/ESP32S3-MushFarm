@@ -1,0 +1,193 @@
+recipe_meta:
+  schema_version: 1
+  recipe_id: "shiitake_pro_v5"
+  recipe_name: "Шиитаке (Lentinula edodes) - Приток + MOSFET"
+  species: "Lentinula edodes"
+  version: 5
+  author: "Myco IoT Core Architect"
+  created_at: "2026-04-11"
+  description: "Особенности: очень долгая инкубация и мягкий свет на плодоношении."
+  notes: >
+    Длительная S1 (60 дней): при отказе SD/сети цикл не должен останавливаться — execution_policy.degraded_storage_policy.
+    CO2: co2_sensor_trust_upper_ppm = 5000 (предел SCD41); температура — см. safety_profile.
+
+execution_policy:
+  start_mode: "manual_select_then_start"
+  resume_after_reboot: true
+  allow_hot_patch_stage_params: true
+  data_logging_profile: "high_frequency_event_driven"
+  degraded_storage_policy: "continue_active_from_ram_reduce_persistence"
+
+hardware_profile:
+  sensor_set_required:
+    - scd41
+    - mlx90614
+    - xkc_y25
+  actuator_set_required:
+    - inlet_fan
+    - humidifier
+    - grow_light
+  minimum_sensor_set_for_start:
+    - scd41
+    - mlx90614
+    - xkc_y25
+
+hardware_mapping:
+  logical_to_physical:
+    inlet_fan: "ventilation_fan_pwm_ch1"
+    humidifier: "humidifier_pwm_ch1"
+    grow_light: "grow_light_pwm_ch1"
+  notes: "Один физический вентилятор = логический inlet_fan."
+
+global_targets:
+  co2_control_enabled: true
+  humidity_control_enabled: true
+  temp_control_enabled: true
+  light_control_enabled: true
+
+stage_transition_defaults:
+  mode: "event_first_timer_fallback"
+  meaning: "По умолчанию событие/оператор раньше таймера; таймер — fallback если событие не наступило. Стадии могут переопределить (см. transition_auto_enabled)."
+
+light_schedule_defaults:
+  photoperiod_hours: 10
+  window_start_local_hour: 8
+  window_end_local_hour: 18
+  requires_ntp: true
+  if_no_ntp: "lights_off"
+
+safety_profile:
+  air_temp_min_crit_c: 5
+  air_temp_max_crit_c: 35
+  substrate_temp_min_crit_c: 4
+  substrate_temp_max_crit_c: 36
+  rh_min_crit_percent: 50
+  rh_max_crit_percent: 99
+  rh_max_crit_hysteresis_percent: 2
+  co2_safety:
+    co2_emergency_absolute_ppm: 8000
+    co2_sensor_trust_upper_ppm: 5000
+    clamp_pid_effective_setpoint_to_trust_range: true
+    clamp_trust_upper_inclusive: true
+    stop_cycle_on_co2_global: false
+  harvest_first_overrides:
+    humidifier_blind_pulse_sec: 15
+    humidifier_blind_pause_sec: 180
+    blind_cycle_max_retries: 3
+    prophylactic_ventilation_actuator: "inlet_fan"
+    prophylactic_ventilation_interval_hours: 4
+    prophylactic_ventilation_duration_min: 2
+    prophylactic_ventilation_duty_percent: 50
+    prophylactic_ventilation_priority: "below_co2_safety_above_pid"
+    prophylactic_ventilation_blocked_when:
+      - emergency_stop
+      - humidifier_dry_run_lock
+
+stages:
+  - stage_id: "S1_colonization"
+    transition_auto_enabled: false
+    auto_transition_after_days: 60
+    auto_transition_after_days_role: "operator_reminder_only"
+    transition_rule: "manual_after_browning"
+    transition_note: "Переход только по команде оператора после browning; число дней — напоминание в UI/алертах, не автоматический переход."
+    setpoints:
+      rh_target_percent: 80
+      co2_target_ppm: 5000
+      air_temp_target_c: 24
+      substrate_temp_target_c: 25
+      light_hours_per_day: 0
+    light_schedule:
+      photoperiod_hours: 0
+    control:
+      rh_hysteresis_percent: 5
+      co2_hysteresis_ppm: 500
+      max_substrate_air_delta_c: 8.0
+      inlet_fan_min_duty_percent: 0
+      inlet_fan_max_duty_percent: 15
+      humidifier_max_duty_percent: 50
+      grow_light_duty_percent: 0
+      control_tick_sec: 2
+    arbitration:
+      allow_parallel_inlet_and_humidifier: false
+      ignore_operational_co2_cap: true
+      co2_operational_purge_enabled: false
+      purge_duration_sec: 0
+    alerts:
+      stage_warn_repeat_min: 120
+      stage_error_repeat_min: 30
+
+  - stage_id: "S2_pinning"
+    auto_transition_after_days: 4
+    transition_rule: "auto_after_cold_shock"
+    setpoints:
+      rh_target_percent: 95
+      co2_target_ppm: 900
+      air_temp_target_c: 12
+      substrate_temp_target_c: 14
+      light_hours_per_day: 10
+    light_schedule:
+      photoperiod_hours: 10
+      window_start_local_hour: 8
+      window_end_local_hour: 18
+      requires_ntp: true
+      if_no_ntp: "lights_off"
+    control:
+      rh_hysteresis_percent: 2
+      co2_hysteresis_ppm: 150
+      max_substrate_air_delta_c: 4.0
+      inlet_fan_min_duty_percent: 20
+      inlet_fan_max_duty_percent: 100
+      humidifier_max_duty_percent: 100
+      grow_light_duty_percent: 100
+      control_tick_sec: 2
+    arbitration:
+      allow_parallel_inlet_and_humidifier: true
+      ignore_operational_co2_cap: false
+      co2_operational_purge_enabled: true
+      purge_duration_sec: 60
+    alerts:
+      stage_warn_repeat_min: 30
+      stage_error_repeat_min: 10
+
+  - stage_id: "S3_fruiting"
+    transition_auto_enabled: false
+    auto_transition_after_days: 30
+    auto_transition_after_days_role: "operator_reminder_only"
+    transition_rule: "manual_harvest_stop"
+    transition_note: "Сбор/останов партии только по оператору; 30 дней — напоминание, не авто-переход."
+    setpoints:
+      rh_target_percent: 70
+      co2_target_ppm: 900
+      air_temp_target_c: 18
+      substrate_temp_target_c: 19
+      light_hours_per_day: 10
+    light_schedule:
+      photoperiod_hours: 10
+      window_start_local_hour: 8
+      window_end_local_hour: 18
+      requires_ntp: true
+      if_no_ntp: "lights_off"
+    control:
+      rh_hysteresis_percent: 5
+      co2_hysteresis_ppm: 200
+      max_substrate_air_delta_c: 2.0
+      inlet_fan_min_duty_percent: 15
+      inlet_fan_max_duty_percent: 80
+      humidifier_max_duty_percent: 50
+      grow_light_duty_percent: 60
+      control_tick_sec: 2
+    arbitration:
+      allow_parallel_inlet_and_humidifier: true
+      ignore_operational_co2_cap: false
+      co2_operational_purge_enabled: true
+      purge_duration_sec: 60
+    alerts:
+      stage_warn_repeat_min: 30
+      stage_error_repeat_min: 10
+
+acceptance_criteria:
+  - "Плодоношение: пониженный duty света 60% при 10 ч фотопериода; окно 08:00–18:00 при NTP."
+  - "Длительная инкубация: при деградации SD цикл продолжается по политике degraded_storage_policy."
+  - "Температурные критические пороги разделены на воздух (SCD41) и субстрат (MLX90614)."
+  - "CO2: co2_emergency_absolute_ppm (глобальная продувка) и co2_operational_purge_enabled (стадия); trust_upper 5000 ppm; clamp_trust_upper_inclusive: true."
+  - "S3: transition_auto_enabled false — нет авто-перехода по таймеру, только напоминание."

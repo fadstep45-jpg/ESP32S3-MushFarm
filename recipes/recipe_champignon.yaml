@@ -1,0 +1,181 @@
+recipe_meta:
+  schema_version: 1
+  recipe_id: "champignon_pro_v5"
+  recipe_name: "Шампиньон двуспоровый (Agaricus bisporus) - Приток + MOSFET"
+  species: "Agaricus bisporus"
+  version: 5
+  author: "Myco IoT Core Architect"
+  created_at: "2026-04-11"
+  description: "Классический трехстадийный рецепт. Контроль через избыточное давление."
+  notes: >
+    CO2: операционная цель на инкубации высокая; глобальный «стоп цикла» по CO2 не используется.
+    co2_sensor_trust_upper_ppm = 5000 совпадает с верхним пределом диапазона SCD41; выше — вне спецификации датчика, прошивка может давать WARN и ограничивать PID.
+    Глобальная продувка по co2_emergency_absolute_ppm не отключается стадией; co2_operational_purge_enabled — только операционные окна.
+
+execution_policy:
+  start_mode: "manual_select_then_start"
+  resume_after_reboot: true
+  allow_hot_patch_stage_params: true
+  data_logging_profile: "high_frequency_event_driven"
+  degraded_storage_policy: "continue_active_from_ram_reduce_persistence"
+
+hardware_profile:
+  sensor_set_required:
+    - scd41
+    - mlx90614
+    - xkc_y25
+  actuator_set_required:
+    - inlet_fan
+    - humidifier
+    - grow_light
+  minimum_sensor_set_for_start:
+    - scd41
+    - mlx90614
+    - xkc_y25
+
+hardware_mapping:
+  logical_to_physical:
+    inlet_fan: "ventilation_fan_pwm_ch1"
+    humidifier: "humidifier_pwm_ch1"
+    grow_light: "grow_light_pwm_ch1"
+  notes: "Один физический вентилятор = логический inlet_fan; при появлении вытяжки добавить exhaust_fan в схему и рецепт."
+
+global_targets:
+  co2_control_enabled: true
+  humidity_control_enabled: true
+  temp_control_enabled: true
+  light_control_enabled: true
+
+stage_transition_defaults:
+  mode: "event_first_timer_fallback"
+  meaning: "Сначала событие/подтверждение из transition_rule; auto_transition_after_days — если событие не наступило."
+
+light_schedule_defaults:
+  photoperiod_hours: 0
+  window_start_local_hour: 7
+  window_end_local_hour: 19
+  requires_ntp: true
+  if_no_ntp: "lights_off"
+
+safety_profile:
+  air_temp_min_crit_c: 10
+  air_temp_max_crit_c: 32
+  substrate_temp_min_crit_c: 8
+  substrate_temp_max_crit_c: 33
+  rh_min_crit_percent: 60
+  rh_max_crit_percent: 99
+  rh_max_crit_hysteresis_percent: 2
+  co2_safety:
+    co2_emergency_absolute_ppm: 8000
+    co2_sensor_trust_upper_ppm: 5000
+    clamp_pid_effective_setpoint_to_trust_range: true
+    clamp_trust_upper_inclusive: true
+    stop_cycle_on_co2_global: false
+  harvest_first_overrides:
+    humidifier_blind_pulse_sec: 15
+    humidifier_blind_pause_sec: 180
+    blind_cycle_max_retries: 3
+    prophylactic_ventilation_actuator: "inlet_fan"
+    prophylactic_ventilation_interval_hours: 4
+    prophylactic_ventilation_duration_min: 2
+    prophylactic_ventilation_duty_percent: 50
+    prophylactic_ventilation_priority: "below_co2_safety_above_pid"
+    prophylactic_ventilation_blocked_when:
+      - emergency_stop
+      - humidifier_dry_run_lock
+
+stages:
+  - stage_id: "S1_colonization"
+    auto_transition_after_days: 18
+    transition_rule: "auto_or_manual_after_casing"
+    setpoints:
+      rh_target_percent: 95
+      co2_target_ppm: 5000
+      air_temp_target_c: 24
+      substrate_temp_target_c: 25
+      light_hours_per_day: 0
+    light_schedule:
+      photoperiod_hours: 0
+    control:
+      rh_hysteresis_percent: 3
+      co2_hysteresis_ppm: 500
+      max_substrate_air_delta_c: 8.0
+      inlet_fan_min_duty_percent: 0
+      inlet_fan_max_duty_percent: 20
+      humidifier_max_duty_percent: 80
+      grow_light_duty_percent: 0
+      control_tick_sec: 2
+    arbitration:
+      allow_parallel_inlet_and_humidifier: false
+      ignore_operational_co2_cap: true
+      co2_operational_purge_enabled: false
+      purge_duration_sec: 0
+    alerts:
+      stage_warn_repeat_min: 60
+      stage_error_repeat_min: 15
+
+  - stage_id: "S2_pinning"
+    auto_transition_after_days: 4
+    transition_rule: "auto_after_pin_formation"
+    setpoints:
+      rh_target_percent: 95
+      co2_target_ppm: 900
+      air_temp_target_c: 17
+      substrate_temp_target_c: 18
+      light_hours_per_day: 0
+    light_schedule:
+      photoperiod_hours: 0
+    control:
+      rh_hysteresis_percent: 2
+      co2_hysteresis_ppm: 100
+      max_substrate_air_delta_c: 4.0
+      inlet_fan_min_duty_percent: 30
+      inlet_fan_max_duty_percent: 100
+      humidifier_max_duty_percent: 100
+      grow_light_duty_percent: 0
+      control_tick_sec: 2
+    arbitration:
+      allow_parallel_inlet_and_humidifier: true
+      ignore_operational_co2_cap: false
+      co2_operational_purge_enabled: true
+      purge_duration_sec: 60
+    alerts:
+      stage_warn_repeat_min: 30
+      stage_error_repeat_min: 10
+
+  - stage_id: "S3_fruiting"
+    auto_transition_after_days: 28
+    transition_rule: "manual_harvest_stop"
+    setpoints:
+      rh_target_percent: 88
+      co2_target_ppm: 900
+      air_temp_target_c: 17
+      substrate_temp_target_c: 18
+      light_hours_per_day: 0
+    light_schedule:
+      photoperiod_hours: 0
+    control:
+      rh_hysteresis_percent: 4
+      co2_hysteresis_ppm: 150
+      max_substrate_air_delta_c: 3.0
+      inlet_fan_min_duty_percent: 15
+      inlet_fan_max_duty_percent: 60
+      humidifier_max_duty_percent: 70
+      grow_light_duty_percent: 0
+      control_tick_sec: 2
+    arbitration:
+      allow_parallel_inlet_and_humidifier: true
+      ignore_operational_co2_cap: false
+      co2_operational_purge_enabled: true
+      purge_duration_sec: 60
+    alerts:
+      stage_warn_repeat_min: 30
+      stage_error_repeat_min: 10
+
+acceptance_criteria:
+  - "Вся вентиляция и свет завязаны на ШИМ; логические имена сопоставлены с каналами в hardware_mapping."
+  - "Старт цикла требует scd41, mlx90614, xkc_y25 при включённом контроле температуры субстрата."
+  - "CO2: co2_emergency_absolute_ppm — глобальная продувка, не отключается стадией; co2_operational_purge_enabled — только операционные окна purge; clamp_trust_upper_inclusive: true при уставке 5000 ppm."
+  - "Операционная уставка CO2 на инкубации 5000 ppm; co2_sensor_trust_upper_ppm = 5000 (предел SCD41); показания вне диапазона — clamp/WARN по политике прошивки."
+  - "Переходы стадий: событие/ручное подтверждение приоритетнее таймера (event_first_timer_fallback); реестр transition_rule — docs/recipes/transition-rules-v1.md."
+  - "Профилактика: duty 50%, приоритет below_co2_safety_above_pid; блокировки см. harvest_first_overrides."

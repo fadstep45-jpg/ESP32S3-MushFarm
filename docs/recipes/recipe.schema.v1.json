@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mushfarm.local/schema/recipe.schema.v1.json",
+  "title": "MushFarm recipe v1",
+  "type": "object",
+  "required": [
+    "recipe_meta",
+    "execution_policy",
+    "hardware_profile",
+    "hardware_mapping",
+    "global_targets",
+    "safety_profile",
+    "stage_transition_defaults",
+    "light_schedule_defaults",
+    "stages"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "recipe_meta": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "recipe_id",
+        "recipe_name",
+        "species",
+        "version"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "schema_version": { "type": "integer", "const": 1 },
+        "recipe_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "recipe_name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "species": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 },
+        "author": { "type": "string" },
+        "created_at": { "type": "string" },
+        "description": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "execution_policy": { "type": "object", "additionalProperties": true },
+    "hardware_profile": {
+      "type": "object",
+      "required": ["sensor_set_required", "actuator_set_required", "minimum_sensor_set_for_start"],
+      "additionalProperties": true,
+      "properties": {
+        "sensor_set_required": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "actuator_set_required": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "minimum_sensor_set_for_start": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "hardware_mapping": {
+      "type": "object",
+      "required": ["logical_to_physical"],
+      "additionalProperties": true,
+      "properties": {
+        "logical_to_physical": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "global_targets": { "type": "object", "additionalProperties": true },
+    "safety_profile": { "type": "object", "additionalProperties": true },
+    "stage_transition_defaults": { "type": "object", "additionalProperties": true },
+    "light_schedule_defaults": { "type": "object", "additionalProperties": true },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["stage_id"],
+        "additionalProperties": true,
+        "properties": {
+          "stage_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "auto_transition_after_days": { "type": "number", "minimum": 0 },
+          "transition_rule": { "type": "string" },
+          "setpoints": { "type": "object", "additionalProperties": true },
+          "control": { "type": "object", "additionalProperties": true },
+          "arbitration": { "type": "object", "additionalProperties": true },
+          "alerts": { "type": "object", "additionalProperties": true },
+          "light_schedule": { "type": "object", "additionalProperties": true }
+        }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

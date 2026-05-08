@@ -13,3 +13,13 @@ esp_err_t mf_sd_log_mount(void)
     return ESP_OK;
 #endif
 }
+
+esp_err_t mf_sd_log_append_line(const char *line)
+{
+    (void)line;
+#if CONFIG_MF_SD_LOG_ENABLE
+    return ESP_ERR_NOT_SUPPORTED;
+#else
+    return ESP_ERR_INVALID_STATE;
+#endif
+}

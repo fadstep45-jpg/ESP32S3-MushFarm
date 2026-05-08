@@ -9,7 +9,8 @@ static const char *TAG = "mf_climate";
 
 void mf_climate_tick(void)
 {
-    if (mf_fsm_state() != MF_STATE_ACTIVE_RUN) {
+    mf_runtime_state_t st = mf_fsm_state();
+    if (st != MF_STATE_ACTIVE_RUN && st != MF_STATE_DEGRADED_RUN) {
         (void)mf_actuator_pwm_set_percent(MF_ACT_FAN, 0);
         (void)mf_actuator_pwm_set_percent(MF_ACT_HUMIDIFIER, 0);
         return;

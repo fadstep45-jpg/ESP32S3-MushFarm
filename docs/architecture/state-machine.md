@@ -49,6 +49,7 @@ This state machine defines deterministic lifecycle control for the farm and prev
 - `gRecoveryStable`: faulted subsystem passes health checks during observation window.
 - `gEmergencyClearAllowed`: policy satisfied to leave `EMERGENCY_STOP` (e.g. acknowledged command + optional physical interlock).
 - `gResumePending`: NVS memory contains an active session flag and a valid `current_recipe` snapshot from before a power loss.
+- `WARN_SD_FAIL`: sticky warning flag meaning SD init/mount/write failed and logging is running in RAM-only mode.
 
 ## Transition Matrix
 
@@ -58,8 +59,7 @@ This state machine defines deterministic lifecycle control for the farm and prev
 | `BOOT` | `evBootComplete` | `gConfigReady && !gResumePending` | `IDLE_READY` | publish READY event |
 | `BOOT` | `evBootComplete` | `gConfigReady && gResumePending && gSensorsMinSet` | `ACTIVE_RUN` | restore stage timers from NVS, resume PID |
 | `BOOT` | `evBootComplete` | `gConfigReady && gResumePending && !gSensorsMinSet` | `DEGRADED_RUN` | restore stage timers, disable affected loops |
-| `BOOT` | `evFaultFatal` | - | `EMERGENCY_STOP` | cut actuators, publish CRITICAL |
-| `BOOT` | `evFaultNonFatal` | - | `BOOT` | record fault; continue init if policy allows, else `SETUP_AP` |
+| `BOOT` | `evFaultNonFatal(SD_INIT/SD_MOUNT/SD_WRITE)` | - | `BOOT` | set `WARN_SD_FAIL`; continue normal boot sequence |
 | `SETUP_AP` | `evApplyConfig` | `gConfigReady` | `IDLE_READY` | persist config, restart network stack |
 | `SETUP_AP` | `evStartCycle` | - | `SETUP_AP` | reject with `ERR_STATE` |
 | `SETUP_AP` | `evFaultFatal` | - | `EMERGENCY_STOP` | shutdown critical loads |
@@ -72,7 +72,7 @@ This state machine defines deterministic lifecycle control for the farm and prev
 | `IDLE_READY` | `evEmergencyStop` | - | `EMERGENCY_STOP` | immediate stop + alert |
 | `IDLE_READY` | `evFaultNonFatal` | - | `IDLE_READY` | publish WARN; if fault removes `gSensorsMinSet`, reject `evStartCycle` |
 | `ACTIVE_RUN` | `evPauseCycle` | - | `PAUSED_SAFE` | hold outputs (inlet_fan drops to prophylactic minimum, humidifier OFF), stop stage timers |
-| `ACTIVE_RUN` | `evFaultNonFatal` | - | `DEGRADED_RUN` | disable affected loops only, apply blind blind pulse profiles if needed |
+| `ACTIVE_RUN` | `evFaultNonFatal(SD_*)` | - | `DEGRADED_RUN` | keep PID/actuators running; switch logging to RAM buffer and mark `WARN_SD_FAIL` |
 | `ACTIVE_RUN` | `evFaultFatal` | - | `EMERGENCY_STOP` | shutdown critical loads |
 | `ACTIVE_RUN` | `evEmergencyStop` | - | `EMERGENCY_STOP` | immediate stop + alert, clear NVS active flag |
 | `PAUSED_SAFE` | `evResumeCycle` | `gHardLimitsSafe` | `ACTIVE_RUN` | resume stage timers and normal PID control |
@@ -107,3 +107,4 @@ This state machine defines deterministic lifecycle control for the farm and prev
 - Transition to `ACTIVE_RUN` is forbidden without validated recipe snapshot.
 - Any fatal power path anomaly forces `EMERGENCY_STOP`.
 - `DEGRADED_RUN` is preferred over stop for non-fatal sensor/storage/network faults.
+- SD-card failures are always treated as non-fatal: farm control must continue using RAM buffered logging.

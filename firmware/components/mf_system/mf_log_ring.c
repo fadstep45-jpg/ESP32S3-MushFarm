@@ -1,28 +1,16 @@
 #include "mf_log_ring.h"
+#include "mf_batch_logger.h"
 #include "esp_log.h"
-#include <string.h>
 
-#define MF_LOG_RING_CAP 32
-#define MF_LOG_LINE_MAX 160
-
-static char s_lines[MF_LOG_RING_CAP][MF_LOG_LINE_MAX];
-static int s_head;
-static int s_count;
+static const char *TAG = "mf_log_ring";
 
 void mf_log_ring_push(const char *line)
 {
-    if (!line) {
-        return;
-    }
-    strncpy(s_lines[s_head], line, MF_LOG_LINE_MAX - 1);
-    s_lines[s_head][MF_LOG_LINE_MAX - 1] = '\0';
-    s_head = (s_head + 1) % MF_LOG_RING_CAP;
-    if (s_count < MF_LOG_RING_CAP) {
-        s_count++;
-    }
+    mf_batch_logger_push(line);
 }
 
 void mf_log_ring_dump(void)
 {
-    ESP_LOGI("mf_log_ring", "capacity=%d used=%d (Sprint 8: flush to SD)", MF_LOG_RING_CAP, s_count);
+    size_t flushed = mf_batch_logger_flush();
+    ESP_LOGI(TAG, "flush: %u lines, sd_available=%d", (unsigned)flushed, (int)mf_batch_logger_sd_available());
 }

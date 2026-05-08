@@ -16,3 +16,4 @@
 - API: `docs/api/`
 - Схема рецептов: `docs/recipes/recipe-schema-v1.md`
 - Чеклист бета-тестирования: `docs/BETA_CHECKLIST.md`
+- Единый roadmap проекта: `docs/roadmap.md`

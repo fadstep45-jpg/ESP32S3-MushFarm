@@ -11,6 +11,7 @@ static const char *TAG = "mf_conn";
 
 esp_err_t mf_connectivity_init(void)
 {
+    int mqtt_enabled = 0;
     esp_err_t err = esp_netif_init();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         ESP_LOGE(TAG, "esp_netif_init: %s", esp_err_to_name(err));
@@ -43,9 +44,10 @@ esp_err_t mf_connectivity_init(void)
         ESP_LOGE(TAG, "mf_mqtt_app_start: %s", esp_err_to_name(err));
         return err;
     }
+    mqtt_enabled = 1;
 #endif
 
     ESP_LOGI(TAG, "connectivity up (AP=%d HTTP=%d MQTT=%d)",
-             CONFIG_MF_WIFI_SOFTAP, CONFIG_MF_HTTP_API, CONFIG_MF_MQTT_ENABLE);
+             CONFIG_MF_WIFI_SOFTAP, CONFIG_MF_HTTP_API, mqtt_enabled);
     return ESP_OK;
 }

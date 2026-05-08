@@ -2,7 +2,9 @@
 #include "sdkconfig.h"
 #include "esp_log.h"
 
+#if CONFIG_MF_SD_LOG_ENABLE
 static const char *TAG = "mf_sd";
+#endif
 
 esp_err_t mf_sd_log_mount(void)
 {

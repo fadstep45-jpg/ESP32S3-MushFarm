@@ -13,6 +13,7 @@ static const char k_embedded_demo_json[] =
 
 static char s_selected[128];
 static float s_rh_target = 90.0f;
+static int64_t s_stage_elapsed_s;
 
 void mf_recipe_set_selected_id(const char *recipe_id)
 {
@@ -48,7 +49,17 @@ void mf_recipe_build_runtime_snapshot(void)
         s_rh_target = (float)rh->valuedouble;
     }
     cJSON_Delete(root);
+    s_stage_elapsed_s = 0;
     ESP_LOGI(TAG, "runtime snapshot rh_target=%.1f %% (embedded demo)", s_rh_target);
+}
+
+void mf_recipe_restore_stage_timer(int64_t elapsed_s)
+{
+    if (elapsed_s < 0) {
+        elapsed_s = 0;
+    }
+    s_stage_elapsed_s = elapsed_s;
+    ESP_LOGI(TAG, "restored stage timer elapsed=%llds", (long long)s_stage_elapsed_s);
 }
 
 float mf_recipe_rh_target_percent(void)

@@ -177,6 +177,7 @@ esp_err_t mf_fsm_resume_restore_from_nvs(void)
     int64_t elapsed_s = (now_unix > snap.stage_started_unix_s && snap.stage_started_unix_s > 0)
                             ? (now_unix - snap.stage_started_unix_s)
                             : 0;
+    mf_recipe_restore_stage_timer(elapsed_s);
     ESP_LOGI(TAG,
              "resume pending from NVS: recipe=%s stage=%s elapsed=%llds",
              snap.recipe_id,

@@ -12,7 +12,6 @@
 #include "mf_climate.h"
 #include "mf_arbiter.h"
 #include "esp_log.h"
-#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -40,17 +39,10 @@ static void mf_app_task(void *arg)
 
 void mf_app_start(void)
 {
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(err);
-
     mf_board_pins_log_defaults();
     ESP_ERROR_CHECK(mf_actuator_pwm_init_safe_off());
 
-    err = mf_i2c_bus_init();
+    esp_err_t err = mf_i2c_bus_init();
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "I2C bus init: %s (continuing for mock sensors)", esp_err_to_name(err));
     }

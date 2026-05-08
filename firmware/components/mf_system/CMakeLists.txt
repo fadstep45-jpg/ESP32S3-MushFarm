@@ -1,5 +1,6 @@
 idf_component_register(
     SRCS
+        "mf_system.c"
         "mf_batch_logger.c"
         "mf_log_ring.c"
         "mf_time_sync.c"

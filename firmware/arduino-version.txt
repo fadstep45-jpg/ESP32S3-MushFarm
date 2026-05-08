@@ -1,0 +1,3 @@
+arduino-ide=2.x
+esp32-core=3.0.7
+target-board=esp32:esp32:esp32s3

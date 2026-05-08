@@ -1,10 +1,22 @@
-# ESP-IDF / firmware
+# Arduino IDE / arduino-cli build output
+firmware/mushfarm/build/
 firmware/build/
-firmware/sdkconfig
-firmware/sdkconfig.old
-firmware/managed_components/
-firmware/dependencies.lock
-firmware/.cache/
+**/*.bin
+**/*.elf
+**/*.map
+
+# Arduino IDE local backups / merged sketch
+firmware/mushfarm/mushfarm.ino.cpp
+firmware/mushfarm/mushfarm.ino.merged.cpp
+firmware/mushfarm/mushfarm.ino.partitions.csv
+
+# Legacy ESP-IDF artefacts (kept here for the preserved legacy_esp_idf/ tree)
+legacy_esp_idf/firmware/build/
+legacy_esp_idf/firmware/sdkconfig
+legacy_esp_idf/firmware/sdkconfig.old
+legacy_esp_idf/firmware/managed_components/
+legacy_esp_idf/firmware/dependencies.lock
+legacy_esp_idf/firmware/.cache/
 
 # OS / IDE
 .DS_Store

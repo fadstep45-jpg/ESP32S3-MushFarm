@@ -1,4 +1,4 @@
-name: firmware build
+name: firmware build (arduino-cli)
 
 on:
   push:
@@ -10,23 +10,63 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    env:
+      ESP32_CORE_VERSION: 3.0.7
+      FQBN: esp32:esp32:esp32s3:USBMode=hwcdc,CDCOnBoot=cdc,PartitionScheme=default
+      SKETCH_DIR: firmware/mushfarm
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Build with ESP-IDF Docker
-        run: |
-          docker pull espressif/idf:v5.3.2
-          docker run --rm -v "${{ github.workspace }}:/project" -w /project/firmware espressif/idf:v5.3.2 idf.py set-target esp32s3
-          docker run --rm -v "${{ github.workspace }}:/project" -w /project/firmware espressif/idf:v5.3.2 idf.py build
+      - name: Compute short SHA
+        id: gitsha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Upload firmware binaries
+      - name: Setup arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Cache arduino-cli data
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.arduino15
+            ~/Arduino/libraries
+          key: arduino-${{ runner.os }}-esp32-${{ env.ESP32_CORE_VERSION }}-${{ hashFiles('firmware/arduino-libs.txt') }}
+          restore-keys: |
+            arduino-${{ runner.os }}-esp32-${{ env.ESP32_CORE_VERSION }}-
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@${ESP32_CORE_VERSION}
+
+      - name: Install libraries
+        run: |
+          arduino-cli lib install "ArduinoJson@7.1.0"
+          arduino-cli lib install "PubSubClient@2.8"
+          arduino-cli lib install "Sensirion I2C SCD4x@1.1.0"
+          arduino-cli lib install "Adafruit MLX90614 Library@2.1.5"
+
+      - name: Compile sketch
+        run: |
+          arduino-cli compile \
+            --fqbn "${FQBN}" \
+            --build-property "build.extra_flags=-DMF_GIT_SHORT_SHA=\"${{ steps.gitsha.outputs.short }}\"" \
+            --output-dir build \
+            --warnings more \
+            "${SKETCH_DIR}"
+
+      - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: mushfarm-fw
           path: |
-            firmware/build/bootloader/bootloader.bin
-            firmware/build/partition_table/partition-table.bin
-            firmware/build/*.bin
+            build/*.bin
+            build/*.elf
+            build/*.map
           if-no-files-found: warn

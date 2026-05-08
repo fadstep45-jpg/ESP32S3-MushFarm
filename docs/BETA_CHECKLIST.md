@@ -5,15 +5,15 @@ Use before field trial. Items map to the sprint roadmap and `docs/architecture/r
 ## Hardware
 
 - [ ] Power path: 5 V rail within spec, grounds star-connected per `docs/Подключение компонентов.md`.
-- [ ] I2C pull-ups present; SDA/SCL match `mf_board.h` or updated Kconfig pins.
+- [ ] I2C pull-ups present; SDA/SCL match `firmware/mushfarm/mf_board.h`.
 - [ ] SCD41, MLX90614, XKC-Y25 wired; water sensor polarity verified.
 - [ ] Fan / humidifier / light MOSFET wiring matches PWM GPIOs or updated config.
 
 ## Firmware image
 
-- [ ] `PROJECT_VER` and git SHA logged at boot.
-- [ ] `MF_SENSORS_MOCK` disabled for real I2C validation.
-- [ ] Climate loop rate and watchdog behaviour observed under load.
+- [ ] `MF_FW_VERSION` and git SHA from `firmware/mushfarm/mf_config.h` logged at boot.
+- [ ] `MF_SENSORS_MOCK` set to `0` in `mf_config.h` for real I2C validation.
+- [ ] Cooperative scheduler (`mf_scheduler.h`) tick rate and watchdog behaviour observed under load.
 
 ## Network and API
 

@@ -1,0 +1,8 @@
+# Arduino libraries used by mushfarm.ino
+# Versions are pinned for reproducible builds. Install via Library Manager
+# or `arduino-cli lib install "<name>@<version>"`.
+
+ArduinoJson@7.1.0
+PubSubClient@2.8
+Sensirion I2C SCD4x@1.1.0
+Adafruit MLX90614 Library@2.1.5

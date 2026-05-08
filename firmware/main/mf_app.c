@@ -61,7 +61,6 @@ void mf_app_start(void)
 
     ESP_ERROR_CHECK(mf_connectivity_init());
     ESP_ERROR_CHECK(mf_system_init());
-    mf_fsm_set_resume_pending(false);
     mf_fsm_boot_done_config_ok();
 
 #if CONFIG_MF_AUTO_DEMO_CYCLE

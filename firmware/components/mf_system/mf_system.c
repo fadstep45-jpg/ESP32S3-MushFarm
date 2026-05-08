@@ -23,6 +23,10 @@ esp_err_t mf_system_init(void)
 #endif
     mf_batch_logger_init(sd_ok);
     mf_log_ring_push("boot");
+    esp_err_t resume_err = mf_fsm_resume_restore_from_nvs();
+    if (resume_err != ESP_OK) {
+        ESP_LOGW(TAG, "resume restore from NVS failed: %s", esp_err_to_name(resume_err));
+    }
     mf_time_sync_init();
     ESP_RETURN_ON_ERROR(mf_service_btn_init(), TAG, "service btn");
     ESP_LOGI(TAG, "mf_system_init done");

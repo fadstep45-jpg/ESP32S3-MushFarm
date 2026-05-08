@@ -108,3 +108,10 @@ This state machine defines deterministic lifecycle control for the farm and prev
 - Any fatal power path anomaly forces `EMERGENCY_STOP`.
 - `DEGRADED_RUN` is preferred over stop for non-fatal sensor/storage/network faults.
 - SD-card failures are always treated as non-fatal: farm control must continue using RAM buffered logging.
+
+## NVS Resume Checkpoint (`gResumePending`)
+
+- Checkpoint writes happen only on macro-events (not PID ticks): `evStartCycle` and stage transition events.
+- Stored snapshot in NVS includes active-session flag, selected recipe id, current stage id, and stage start timestamp.
+- On `BOOT`, firmware reads NVS; if active flag exists and snapshot is valid, it sets `gResumePending=true` and restores into `ACTIVE_RUN` (or `DEGRADED_RUN` if guards fail).
+- Session flag is cleared on `evEmergencyStop`, `evEmergencyAcknowledged`, and normal cycle stop/completion.

@@ -5,7 +5,6 @@
 - Прошивка (Arduino IDE 2.x, без явных вызовов FreeRTOS API): [firmware/](firmware/)
 - Спецификации и архитектура: [docs/](docs/)
 - Рецепты: [recipes/](recipes/)
-- Прежний ESP-IDF проект сохранён как референс в [legacy_esp_idf/](legacy_esp_idf/) и не собирается CI.
 
 ## Прошивка
 

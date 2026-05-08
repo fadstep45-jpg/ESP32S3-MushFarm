@@ -1,6 +1,6 @@
 ﻿# MushFarm firmware (Arduino IDE)
 
-Прошивка ESP32-S3 для грибной фермы. Локальная разработка ведётся в **Arduino IDE 2.x**, без ESP-IDF и без явных вызовов FreeRTOS API. Прежний ESP-IDF проект сохранён в [legacy_esp_idf/firmware/](../legacy_esp_idf/firmware/) как референс архитектуры (FSM, NVS resume, batch logger, climate loop).
+Прошивка ESP32-S3 для грибной фермы. Локальная разработка ведётся в **Arduino IDE 2.x**, без ESP-IDF и без явных вызовов FreeRTOS API.
 
 ## Что установить
 

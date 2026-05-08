@@ -11,7 +11,9 @@ static const char *TAG = "mlx90614";
 #define MLX90614_ADDR 0x5A
 #define CMD_READ_OBJ1 0x07
 
+#if !CONFIG_MF_SENSORS_MOCK
 static i2c_master_dev_handle_t s_dev;
+#endif
 static int64_t s_last_ok_us;
 static float s_obj_c;
 static bool s_ok;

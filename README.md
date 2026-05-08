@@ -2,7 +2,7 @@
 
 Проект грибной фермы на ESP32-S3.
 
-- Прошивка (Arduino IDE 2.x, без явных вызовов FreeRTOS API): [firmware/](firmware/)
+- Прошивка (Arduino IDE 2.x): [firmware/](firmware/)
 - Спецификации и архитектура: [docs/](docs/)
 - Рецепты: [recipes/](recipes/)
 

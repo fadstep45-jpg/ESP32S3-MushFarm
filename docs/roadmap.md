@@ -25,6 +25,8 @@ flowchart LR
 #### S1 — Платформа, сборка, CI
 - **Цель:** воспроизводимая сборка в Arduino IDE и стабильный CI.
 - **DoD:** чистая сборка из чистого клона, CI зеленый, в boot-логе есть версия + git SHA.
+- **DoD (дополнительно):** зафиксирована OTA-совместимая partition scheme и выполнен ранний OTA smoke-test.
+- **DoD (дополнительно):** добавлены метрики ресурсов (free heap, min free heap, largest free block, flash usage baseline).
 
 #### S2 — Датчики и fault-модель
 - **Цель:** стабильные чтения SCD41/MLX90614/XKC-Y25.
@@ -54,6 +56,7 @@ flowchart LR
 #### S6 — AP/HTTP
 - **Цель:** локальное управление по `docs/api/ap-contract.md`.
 - **DoD:** status/sensors/recipe endpoints работают с телефона/ноута.
+- **DoD (дополнительно):** реализован и проверен сценарий `first-boot -> AP -> ввод/сохранение Wi-Fi credentials -> apply/reboot -> проверка подключения`.
 
 #### S7 — MQTT
 - **Цель:** удаленное управление по `docs/api/mqtt-contract.md`.
@@ -62,6 +65,7 @@ flowchart LR
 #### S8 — Логи, SD, время
 - **Цель:** наблюдаемость и корректное время.
 - **DoD:** ring buffer + SD flush + degrade policy + NTP/TZ по `docs/architecture/threat-model-and-time.md`.
+- **DoD (дополнительно):** SD flush реализован неблокирующим/порционным способом и не нарушает период цикла управления приводами.
 
 ### Фаза 4 — Decor and Tests (S9-S10)
 
@@ -87,6 +91,7 @@ flowchart LR
 - Не ускорять сеть/облако раньше стабилизации локального цикла `датчики -> FSM -> приводы`.
 - Команды управления (Serial/AP/MQTT) должны иметь защиту от повторов, timeout и rollback.
 - Fault-injection и регрессионные проверки выполнять постоянно, начиная с ранних спринтов.
+- Мониторинг ресурсов памяти вести с ранних этапов: фиксировать free/min heap, фрагментацию (largest block) и динамику потребления после включения сети, FSM, логгера и JSON.
 
 ## Оценка сроков
 

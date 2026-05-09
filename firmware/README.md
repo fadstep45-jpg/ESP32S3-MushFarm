@@ -20,6 +20,24 @@
    - `USB CDC On Boot: Enabled` (для логов через Serial Monitor)
 4. **Verify** для сборки, **Upload** для прошивки, **Serial Monitor** на 115200 — для логов.
 
+### Отдельный boot self-check (S2.5)
+
+- Для быстрой стендовой диагностики можно открыть отдельный скетч [selfcheck_boot/selfcheck_boot.ino](selfcheck_boot/selfcheck_boot.ino).
+- Он один раз на старте проверяет доступность датчиков (AUTO) и по очереди запускает актуаторы на 50% на 2 секунды (NEEDS_OPERATOR).
+- Тест увлажнителя автоматически пропускается при `DRY` состоянии датчика воды (защита от сухого хода).
+
+### Service console GCODE (S3.5)
+
+- Для ручной диагностики можно открыть [service_console_gcode/service_console_gcode.ino](service_console_gcode/service_console_gcode.ino).
+- Serial 115200, команды:
+  - `M114` — телеметрия (SCD41/MLX90614/water + текущие мощности актуаторов).
+  - `M106 S<0-100>` — вентилятор.
+  - `M140 S<0-100>` — увлажнитель (с `DRY_RUN_GUARD` при пустом баке).
+  - `M150 S<0-100>` — свет.
+  - `M112` — аварийный стоп (latched).
+  - `M999` — снять latched-режим аварийного стопа.
+- `autorollback` по таймауту отключён: тест актуаторов может длиться дольше 30 секунд.
+
 ## Что выводится при старте
 
 - Версия прошивки `MF_FW_VERSION` (см. `mushfarm/mf_config.h`).

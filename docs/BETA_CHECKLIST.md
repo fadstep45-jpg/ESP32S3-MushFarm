@@ -22,7 +22,8 @@ Use before field trial. Items map to the sprint roadmap and `docs/architecture/r
 
 ## Safety
 
-- [ ] Long-press service button triggers `EMERGENCY_STOP`; outputs go to safe duty.
+- [ ] Long-press service button (≥3 s) transitions `IDLE_READY`/`EMERGENCY_STOP` → `SETUP_AP`; climate follows safe-idle policy per `service-mode-contract.md`.
+- [ ] `EMERGENCY_STOP` is reachable from MQTT/HTTP (`evEmergencyStop`) and latches outputs OFF.
 - [ ] `evEmergencyAcknowledged` path tested from HTTP/MQTT when implemented.
 
 ## Soak

@@ -43,6 +43,12 @@
 - Версия прошивки `MF_FW_VERSION` (см. `mushfarm/mf_config.h`).
 - Короткий git SHA, если CI его подставил, иначе `unknown`.
 - Карта пинов и список включённых модулей.
+- **S1:** строка `heap free=… min_free=… largest_block=… flash_chip=…` (`mf_resources.cpp`).
+- **S2.5:** строка `sensors=MOCK` или `sensors=LIVE` по флагу `MF_SENSORS_MOCK`.
+
+## OTA и partition scheme (S1)
+
+Нормативная заметка для Arduino IDE: [docs/ops/arduino-partition-ota.md](../docs/ops/arduino-partition-ota.md).
 
 ## Архитектура
 

@@ -9,6 +9,7 @@
 
 static bool s_was_pressed = false;
 static uint32_t s_press_started_ms = 0;
+static bool s_long_press_fired = false;
 
 void mf_service_btn_init() {
     pinMode(MF_SERVICE_BUTTON_PIN, INPUT_PULLUP);
@@ -19,11 +20,12 @@ void mf_service_btn_poll() {
     uint32_t now = mf_clock_millis();
     if (pressed && !s_was_pressed) {
         s_press_started_ms = now;
-    } else if (pressed && s_was_pressed) {
+        s_long_press_fired = false;
+    } else if (pressed && s_was_pressed && !s_long_press_fired) {
         if ((now - s_press_started_ms) >= MF_SVC_BTN_LONG_PRESS_MS) {
-            mf_log_warn("svc_btn", "long press -> EMERGENCY_STOP");
-            mf_fsm_emergency_stop();
-            s_press_started_ms = now; // debounce so we don't spam
+            mf_log_info("svc_btn", "long press -> service (SETUP_AP per state-machine)");
+            mf_fsm_service_button_long_press();
+            s_long_press_fired = true;
         }
     }
     s_was_pressed = pressed;

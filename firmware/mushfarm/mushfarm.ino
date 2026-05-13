@@ -12,6 +12,7 @@
 #include "mf_log.h"
 #include "mf_clock.h"
 #include "mf_board.h"
+#include "mf_resources.h"
 #include "mf_scheduler.h"
 #include "mf_actuators.h"
 #include "mf_sensor_scd41.h"
@@ -57,6 +58,12 @@ void setup() {
     mf_log_init(115200);
     mf_log_info("boot", "MushFarm %s git=%s", MF_FW_VERSION, MF_GIT_SHORT_SHA);
     mf_board_log_pin_map();
+    mf_boot_log_resource_metrics();
+#if MF_SENSORS_MOCK
+    mf_log_info("boot", "S2.5 sensors=MOCK (synthetic I2C; set MF_SENSORS_MOCK 0 for hardware)");
+#else
+    mf_log_info("boot", "S2.5 sensors=LIVE (I2C drivers)");
+#endif
 
     mf_actuators_init_safe_off();
 

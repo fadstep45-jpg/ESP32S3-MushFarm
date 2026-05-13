@@ -3,6 +3,7 @@
 #include "mf_clock.h"
 #include "mf_recipe.h"
 #include "mf_nvs_session.h"
+#include "mf_actuators.h"
 #include "mf_sensor_scd41.h"
 #include "mf_sensor_mlx90614.h"
 #include "mf_sensor_water.h"
@@ -58,7 +59,7 @@ bool mf_fsm_resume_restore_from_nvs() {
     int64_t elapsed = (now_unix > snap.stage_started_unix_s && snap.stage_started_unix_s > 0)
                           ? (now_unix - snap.stage_started_unix_s)
                           : 0;
-    mf_recipe_restore_stage_timer(elapsed);
+    mf_recipe_apply_checkpoint(snap.stage_id, elapsed);
     mf_log_info("fsm", "resume pending recipe=%s stage=%s elapsed=%llds",
                 snap.recipe_id, snap.stage_id, (long long)elapsed);
     return true;
@@ -95,6 +96,8 @@ void mf_fsm_fault_nonfatal(mf_fsm_nonfatal_t code) {
 
 void mf_fsm_emergency_stop() {
     mf_session_clear();
+    mf_recipe_runtime_abort();
+    mf_actuators_all_off();
     s_emergency_latch = true;
     s_state = MF_STATE_EMERGENCY_STOP;
     mf_log_warn("fsm", "-> %s", mf_fsm_state_str(s_state));
@@ -108,6 +111,7 @@ void mf_fsm_emergency_ack() {
     }
     s_emergency_latch = false;
     mf_session_clear();
+    mf_actuators_all_off();
     s_state = MF_STATE_IDLE_READY;
     mf_log_info("fsm", "emergency ack -> %s", mf_fsm_state_str(s_state));
 }
@@ -140,6 +144,7 @@ mf_fsm_result_t mf_fsm_stop_cycle() {
     if (s_state != MF_STATE_ACTIVE_RUN && s_state != MF_STATE_DEGRADED_RUN && s_state != MF_STATE_PAUSED_SAFE) {
         return MF_FSM_ERR_STATE;
     }
+    mf_recipe_runtime_abort();
     mf_session_clear();
     s_state = MF_STATE_IDLE_READY;
     mf_log_info("fsm", "stop -> %s", mf_fsm_state_str(s_state));
@@ -149,6 +154,7 @@ mf_fsm_result_t mf_fsm_stop_cycle() {
 mf_fsm_result_t mf_fsm_pause_cycle() {
     if (s_state == MF_STATE_PAUSED_SAFE) return MF_FSM_NOOP;
     if (s_state != MF_STATE_ACTIVE_RUN && s_state != MF_STATE_DEGRADED_RUN) return MF_FSM_ERR_STATE;
+    mf_recipe_runtime_set_timer_frozen(true);
     s_state = MF_STATE_PAUSED_SAFE;
     mf_log_info("fsm", "-> %s", mf_fsm_state_str(s_state));
     return MF_FSM_OK;
@@ -158,6 +164,7 @@ mf_fsm_result_t mf_fsm_resume_cycle() {
     if (s_state == MF_STATE_ACTIVE_RUN) return MF_FSM_NOOP;
     if (s_state != MF_STATE_PAUSED_SAFE) return MF_FSM_ERR_STATE;
     if (!mf_fsm_g_hard_limits_safe()) return MF_FSM_ERR_GUARD;
+    mf_recipe_runtime_set_timer_frozen(false);
     s_state = MF_STATE_ACTIVE_RUN;
     mf_log_info("fsm", "-> %s", mf_fsm_state_str(s_state));
     return MF_FSM_OK;

@@ -34,14 +34,19 @@ static void task_climate() {
 }
 
 static void task_trace() {
-    mf_log_info("trace", "state=%s recipe=%s rh=%.1f%% co2=%.0f t=%.1fC obj=%.1fC water=%d",
+    mf_log_info("trace", "state=%s stage=%s recipe=%s rh=%.1f%% co2=%.0f t=%.1fC obj=%.1fC water=%d",
                 mf_fsm_state_str(mf_fsm_state()),
+                mf_recipe_current_stage_id(),
                 mf_fsm_selected_recipe_id(),
                 mf_scd41_rh_percent(),
                 mf_scd41_co2_ppm(),
                 mf_scd41_temp_c(),
                 mf_mlx90614_object_c(),
                 (int)mf_water_present());
+}
+
+static void task_recipe() {
+    mf_recipe_runtime_tick();
 }
 
 static void task_batch_flush() {
@@ -78,6 +83,7 @@ void setup() {
 #endif
 
     mf_scheduler_add("sensors", MF_TICK_SENSORS_MS, task_sensors);
+    mf_scheduler_add("recipe", MF_TICK_RECIPE_MS, task_recipe);
     mf_scheduler_add("climate", MF_TICK_CLIMATE_MS, task_climate);
     mf_scheduler_add("trace", MF_TICK_TRACE_MS, task_trace);
     mf_scheduler_add("batch_flush", MF_TICK_BATCH_FLUSH_MS, task_batch_flush);

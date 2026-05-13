@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 void mf_scd41_init();
 void mf_scd41_poll();
@@ -10,3 +11,6 @@ float mf_scd41_rh_percent();
 float mf_scd41_temp_c();
 
 bool mf_scd41_ok(int64_t *stale_age_ms_out);
+
+/** True while I2C/health indicates disconnected or prolonged read failure (S2 fault). */
+bool mf_scd41_fault_disconnected();

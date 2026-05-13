@@ -26,6 +26,15 @@
 // Service mode: auto-select demo recipe and start cycle on boot.
 #define MF_AUTO_DEMO_CYCLE 1
 
+// S2 sensor pipeline (fault-model.md): retries per poll, stale window, recovery streak.
+#define MF_SENSOR_READ_RETRIES       5u
+#define MF_SENSOR_STALE_MS          5000u
+#define MF_SENSOR_RECOVERY_SAMPLES  10u
+#define MF_WATER_DEBOUNCE_SAMPLES   3u
+
+// S4 recipe runtime tick (stage elapsed / transitions).
+#define MF_TICK_RECIPE_MS           1000u
+
 // Loop scheduling intervals (milliseconds).
 #define MF_TICK_SENSORS_MS    500
 #define MF_TICK_CLIMATE_MS    2000

@@ -67,6 +67,18 @@ flowchart LR
 - **DoD:** ring buffer + SD flush + degrade policy + NTP/TZ по `docs/architecture/threat-model-and-time.md`.
 - **DoD (дополнительно):** SD flush реализован неблокирующим/порционным способом и не нарушает период цикла управления приводами.
 
+Подспринты фазы 3:
+- **S8.5 Camera — timelapse + service preview (cosmetic):**
+  - **Назначение фичи:** камера в проекте — это **observability/UX**, а не control-input. Никакой логики управления (PID, safety, FSM-переходы) от неё не зависит. Задачи:
+    1. собрать timelapse роста грибов за цикл (готовый видео-ассет к концу выращивания),
+    2. показать low-FPS превью (~10 fps) в сервисном режиме для визуальной диагностики.
+  - **Pre-requisite (done):** стаб `mf_camera` распознаёт hardware, `MF_CAMERA_ENABLE=0`, документация по FFC/DVP, BoM-строка, `WARN_CAMERA_FAIL` зафиксирован в FSM как sticky-флаг без переходов состояния.
+  - **DoD (функция):** `MF_CAMERA_ENABLE=1`, успешный init + чтение sensor-id по SCCB; JPEG capture работает с разумным разрешением (например, VGA/SVGA); timelapse-фрейм пишется по recipe-defined интервалу **только в `ACTIVE_RUN`**; preview-stream ~10 fps доступен **только в SETUP_AP** через AP-эндпоинт.
+  - **DoD (изоляция от control-плоскости):** capture никогда не блокирует tick FSM/PID (deadline-soft, дроп фрейма при превышении бюджета времени). Любой сбой камеры (NACK на SCCB, frame timeout, отвал FFC) → ставит `WARN_CAMERA_FAIL`, фича отключается, **FSM не двигается**.
+  - **DoD (хранение, опционально):** если на момент S8.5 уже есть рабочий SD (см. S8) — timelapse-кадры пишутся туда с простой ротацией. Если SD недоступен — degrade до RAM ring buffer на последние N кадров без падения функции.
+  - **DoD (ресурсы):** при включённой камере baseline heap/largest-free-block из S1 остаётся в пределах бюджета. Если не помещается — снижаем разрешение/частоту до пределов бюджета.
+  - **Out of scope (явно):** AI-анализ (плесень, рост), детекция объектов, использование кадров как обратной связи в управлении. Это рассматривается отдельным проектом, а не S8.5.
+
 ### Фаза 4 — Decor and Tests (S9-S10)
 
 #### S9 — Service mode hardening + security

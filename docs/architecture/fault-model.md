@@ -68,3 +68,9 @@ The system must remain fail-operational for non-fatal faults. Only affected func
 - `WARN`: push once + periodic reminder every 30 min.
 - `ERROR`: immediate push + repeated every 10 min.
 - `CRITICAL`: immediate push, local buzzer/indicator (if available), cycle forced to safe policy.
+
+## Non-control auxiliary features
+
+Some subsystems are **observability/UX-only** and intentionally **outside** the fault matrix above — they cannot affect control loops, so their failure modes are not "degradation":
+
+- **Camera (DVP).** Used for timelapse and low-FPS service-mode preview. Not a control input. Init/SCCB/frame failures set sticky `WARN_CAMERA_FAIL` flag, log a single `WARN` event, and disable the snapshot/preview path. No FSM transition, no degraded mode, no operator action required to keep the cycle running. Recovery: successful re-init (service-mode command or reboot) clears the flag. See [state-machine.md](state-machine.md) "Camera Behavior per State" for per-state policy.

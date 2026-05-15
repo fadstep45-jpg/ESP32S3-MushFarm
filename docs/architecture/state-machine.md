@@ -50,6 +50,7 @@ This state machine defines deterministic lifecycle control for the farm and prev
 - `gEmergencyClearAllowed`: policy satisfied to leave `EMERGENCY_STOP` (e.g. acknowledged command + optional physical interlock).
 - `gResumePending`: NVS memory contains an active session flag and a valid `current_recipe` snapshot from before a power loss.
 - `WARN_SD_FAIL`: sticky warning flag meaning SD init/mount/write failed and logging is running in RAM-only mode.
+- `WARN_CAMERA_FAIL`: sticky warning flag meaning camera init/SCCB/frame-timeout error; snapshots disabled for this session, control loops unaffected.
 
 ## Transition Matrix
 
@@ -60,6 +61,7 @@ This state machine defines deterministic lifecycle control for the farm and prev
 | `BOOT` | `evBootComplete` | `gConfigReady && gResumePending && gSensorsMinSet` | `ACTIVE_RUN` | restore stage timers from NVS, resume PID |
 | `BOOT` | `evBootComplete` | `gConfigReady && gResumePending && !gSensorsMinSet` | `DEGRADED_RUN` | restore stage timers, disable affected loops |
 | `BOOT` | `evFaultNonFatal(SD_INIT/SD_MOUNT/SD_WRITE)` | - | `BOOT` | set `WARN_SD_FAIL`; continue normal boot sequence |
+| `BOOT` | `evFaultNonFatal(CAMERA_INIT/CAMERA_SCCB)` | - | `BOOT` | set `WARN_CAMERA_FAIL`; disable snapshots; continue normal boot |
 | `SETUP_AP` | `evApplyConfig` | `gConfigReady` | `IDLE_READY` | persist config, restart network stack |
 | `SETUP_AP` | `evStartCycle` | - | `SETUP_AP` | reject with `ERR_STATE` |
 | `SETUP_AP` | `evFaultFatal` | - | `EMERGENCY_STOP` | shutdown critical loads |
@@ -108,6 +110,7 @@ This state machine defines deterministic lifecycle control for the farm and prev
 - Any fatal power path anomaly forces `EMERGENCY_STOP`.
 - `DEGRADED_RUN` is preferred over stop for non-fatal sensor/storage/network faults.
 - SD-card failures are always treated as non-fatal: farm control must continue using RAM buffered logging.
+- Camera failures **never** trigger a state transition. Camera is a cosmetic / observability feature (timelapse + service-mode preview), not a control input. A failure only sets sticky `WARN_CAMERA_FAIL` and disables the snapshot/preview path; FSM stays in whatever state it was.
 
 ## NVS Resume Checkpoint (`gResumePending`)
 
@@ -115,3 +118,19 @@ This state machine defines deterministic lifecycle control for the farm and prev
 - Stored snapshot in NVS includes active-session flag, selected recipe id, current stage id, and stage start timestamp.
 - On `BOOT`, firmware reads NVS; if active flag exists and snapshot is valid, it sets `gResumePending=true` and restores into `ACTIVE_RUN` (or `DEGRADED_RUN` if guards fail).
 - Session flag is cleared on `evEmergencyStop`, `evEmergencyAcknowledged`, and normal cycle stop/completion.
+
+## Camera Behavior per State
+
+Camera is a **cosmetic / observability** feature: timelapse capture during grow + low-FPS preview in service mode. It is **not** a control input — no PID loop, safety rule, or FSM transition depends on a camera frame. Driver activation is gated by `MF_CAMERA_ENABLE` (firmware compile-time flag); below applies only when the driver is enabled.
+
+| State | Camera behavior |
+| --- | --- |
+| `BOOT` | One init attempt + SCCB probe. On error → set sticky `WARN_CAMERA_FAIL`; boot continues unchanged. |
+| `SETUP_AP` | Timelapse off. Service-mode preview (low-FPS, ~10 fps) and one-shot snapshots are allowed. |
+| `IDLE_READY` | Timelapse off, no periodic captures. On-demand snapshot allowed. |
+| `ACTIVE_RUN` | Timelapse on: periodic frame per recipe-defined interval (deadline-soft, never blocks PID tick). On-demand snapshot allowed. |
+| `PAUSED_SAFE` | Timelapse paused (counts as "no growth"); last frame remains available; on-demand snapshot allowed. |
+| `DEGRADED_RUN` | No camera-specific change. Camera state depends only on `WARN_CAMERA_FAIL` (independent of why FSM entered `DEGRADED_RUN`). |
+| `EMERGENCY_STOP` | Timelapse off; driver may be deinitialized to free resources. |
+
+If `WARN_CAMERA_FAIL` is set, all timelapse/preview/on-demand paths are no-op (and AP/MQTT return `null` for snapshot), regardless of FSM state. Recovery: a successful re-init (via service-mode reinit command or reboot) clears the flag.

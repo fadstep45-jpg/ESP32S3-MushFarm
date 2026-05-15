@@ -76,9 +76,11 @@ Service mode can be entered by:
 
 ## Camera Behavior
 
-- baseline: on-demand snapshot for AP pages.
-- optional: low-FPS stream in service mode only.
-- camera failure must not block control loops.
+- **Role:** observability / UX only. Used for end-of-cycle timelapse and for low-FPS service-mode preview. **Not** a control input — no PID loop, safety rule, or FSM transition depends on camera output.
+- **Baseline:** on-demand snapshot endpoint for AP pages.
+- **Service-mode preview:** low-FPS stream (~10 fps) available **only** while in `SETUP_AP`/service mode; never exposed during `ACTIVE_RUN` (which reserves the camera path for timelapse capture).
+- **Failure mode:** any init/SCCB/frame error sets sticky `WARN_CAMERA_FAIL`, disables snapshot/preview, and is reported as a single `WARN` event. Control loops continue unchanged; no FSM transition, no degraded mode.
+- **Hardware:** the controller board ships with a physically installed camera module (FFC 24-pin); firmware support is delivered in sprint **S8.5** and is gated by the `MF_CAMERA_ENABLE` flag in `firmware/mushfarm/mf_config.h`.
 
 ## Safety Constraints
 

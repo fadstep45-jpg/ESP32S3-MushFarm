@@ -23,6 +23,7 @@
 #include "mf_recipe.h"
 #include "mf_fsm.h"
 #include "mf_climate.h"
+#include "mf_camera.h"
 
 static void task_sensors() {
     mf_scd41_poll();
@@ -58,6 +59,7 @@ void setup() {
     mf_log_init(115200);
     mf_log_info("boot", "MushFarm %s git=%s", MF_FW_VERSION, MF_GIT_SHORT_SHA);
     mf_board_log_pin_map();
+    mf_camera_init();
     mf_boot_log_resource_metrics();
 #if MF_SENSORS_MOCK
     mf_log_info("boot", "S2.5 sensors=MOCK (synthetic I2C; set MF_SENSORS_MOCK 0 for hardware)");

@@ -8,6 +8,8 @@ Use before field trial. Items map to the sprint roadmap and `docs/architecture/r
 - [ ] I2C pull-ups present; SDA/SCL match `firmware/mushfarm/mf_board.h`.
 - [ ] SCD41, MLX90614, XKC-Y25 wired; water sensor polarity verified.
 - [ ] Fan / humidifier / light MOSFET wiring matches PWM GPIOs or updated config.
+- [ ] Camera: FFC ribbon seated into the connector, latch closed, lens undamaged.
+- [ ] `MF_CAMERA_ENABLE` in `firmware/mushfarm/mf_config.h` matches the beta configuration (default `0` until the dedicated camera sprint).
 
 ## Firmware image
 

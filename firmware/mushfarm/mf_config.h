@@ -23,6 +23,11 @@
 // SD card FAT logging (FAT mount + append). RAM batch logger always runs.
 #define MF_SD_LOG_ENABLE 0
 
+// Camera (DVP). The target board ships with a 24-pin FFC camera module
+// (OV2640 / OV3660 / OV5640 — final model TBD). Pins/driver are wired
+// in a future sprint; for now mf_camera is a stub.
+#define MF_CAMERA_ENABLE 0
+
 // Service mode: auto-select demo recipe and start cycle on boot.
 #define MF_AUTO_DEMO_CYCLE 1
 

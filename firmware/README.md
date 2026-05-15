@@ -50,6 +50,15 @@
 
 Нормативная заметка для Arduino IDE: [docs/ops/arduino-partition-ota.md](../docs/ops/arduino-partition-ota.md).
 
+## Камера
+
+Целевая плата физически содержит модуль камеры (FFC 24-pin), модель — OV2640 / OV3660 / OV5640, финализируется на этапе закупки. В firmware есть только stub-модуль `mf_camera.{h,cpp}`, реальный драйвер появится отдельным спринтом.
+
+- Включается флагом `MF_CAMERA_ENABLE` в `mushfarm/mf_config.h` (по умолчанию `0`).
+- При `MF_CAMERA_ENABLE 0` в boot-логе строка `camera=disabled (stub)`.
+- При `MF_CAMERA_ENABLE 1` сейчас тоже stub (`camera=stub`), без реального захвата кадров — placeholder для будущего драйвера.
+- Конкретные GPIO для DVP/SCCB пока **TBD**, см. `docs/Подключение компонентов.md` раздел "Камера (DVP)".
+
 ## Архитектура
 
 - **Без FreeRTOS API в нашем коде.** Под капотом ESP32 Arduino core всё равно держит FreeRTOS (это ограничение платформы), но из нашего кода никаких `xTaskCreate`, очередей, семафоров — только `setup()`/`loop()` и кооперативный планировщик на `millis()` (см. `mf_scheduler.h`).

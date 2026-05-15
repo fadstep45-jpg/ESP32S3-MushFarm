@@ -7,11 +7,14 @@
 
 #define MF_I2C_SDA_PIN       1
 #define MF_I2C_SCL_PIN       2
-#define MF_WATER_LEVEL_PIN   47
+#define MF_WATER_LEVEL_PIN   21
 
-#define MF_PWM_FAN_PIN       8
-#define MF_PWM_HUM_PIN       9
-#define MF_PWM_LIGHT_PIN     10
+// GPIO 3 — strapping pin (LOG_LEVEL / JTAG print select).
+// Safe to drive after boot, but ensure the MOSFET-module has a gate
+// pull-down to GND so the fan does not glitch during reset.
+#define MF_PWM_FAN_PIN       3
+#define MF_PWM_HUM_PIN       42
+#define MF_PWM_LIGHT_PIN     47
 
 #define MF_SERVICE_BUTTON_PIN 0
 

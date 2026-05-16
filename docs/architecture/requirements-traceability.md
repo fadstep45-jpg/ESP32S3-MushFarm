@@ -7,8 +7,9 @@ Maps normative architecture documents to **expected firmware modules** and **ver
 | Document | Primary responsibility | Suggested firmware module(s) | Verification (tests / checks) |
 | --- | --- | --- | --- |
 | [state-machine.md](state-machine.md) | Lifecycle states, transition guards, idempotency | `mf_fsm` (table `k_transitions[]`), `mf_climate`, `mf_actuators`, `mf_service_btn` | Table-driven unit tests: every `(state, event, guard)` row; property: no `ACTIVE_RUN` without recipe snapshot; emergency latch + `SETUP_AP` long-press per matrix |
-| [fault-model.md](fault-model.md) | Severity, debounce, degradation, recovery windows | `mf_sensor_scd41`, `mf_sensor_mlx90614`, `mf_sensor_water` (S2 pipeline); future `fault_supervisor` | Fault injection tests per subsystem row; recovery counter tests; mock rare NaN path in sensors |
-| [control-arbitration.md](control-arbitration.md) | Loop outputs, hard limits, combiner, anti-windup | `climate_arbiter`, `pid_rh`, `pid_co2` | Golden-vector tests: sensor tuples → expected duties + `arb_reason_code` |
+| [fault-model.md](fault-model.md) | Severity, debounce, degradation, recovery windows | `mf_sensor_scd41`, `mf_sensor_mlx90614`, `mf_sensor_water` (S2 pipeline); `mf_fault_supervisor` (edge-detect → `evFaultNonFatal` / `evRecoveryValidated`); `mf_water_policy` (reserve + pulse-safe + LOCKED escalation). Doc labels `DEG_SENSOR_*` map to `MF_WARN_*` + loop disable — see fault-model §Firmware mapping | `firmware/mushfarm_tests/mushfarm_tests.ino`: GV1–GV9 + fault-injection + `test_degraded_second_sensor_persists_warn` + water policy transitions |
+| [control-arbitration.md](control-arbitration.md) | Loop outputs, hard limits, combiner, anti-windup | `mf_climate_arbiter`, `mf_loop_rh`, `mf_loop_co2`, `mf_loop_temp`, `mf_control_limits`, `mf_pid`, `mf_control_profile`, `mf_climate_trace` | Golden vectors in [s5-acceptance.md](s5-acceptance.md); mock scenarios via `mf_mock_climate`; bench tuning B1–B7 in roadmap |
+| Roadmap **S5** (climate + arbitration) | RH/CO2/TEMP loops, hard limits, cooperative combiner, decision trace | modules above + `mf_climate` | Phase A: all rows in [s5-acceptance.md](s5-acceptance.md) checklist; Phase B: contour stable on bench 30+ min |
 | [service-mode-contract.md](service-mode-contract.md) | Service classes, hot vs restart apply, manual test bounds | `service_mode`, `actuator_test_runner` | Tests: manual test mutex with auto loop; timeout rollback; deny when hard-limit active |
 | [../api/mqtt-contract.md](../api/mqtt-contract.md) | MQTT envelope, topics, commands, idempotency | `mqtt_command`, `mqtt_ack` | Protocol tests: duplicate `msg_id`, oversized upload, ACL assumptions |
 | [../api/ap-contract.md](../api/ap-contract.md) | HTTP parity with MQTT | `ap_http_api`, `request_id` correlator | API contract tests mirroring MQTT command matrix |
@@ -16,6 +17,7 @@ Maps normative architecture documents to **expected firmware modules** and **ver
 | [../recipes/transition-rules-v1.md](../recipes/transition-rules-v1.md) | Registry of `transition_rule` ids | `mf_recipe` (embedded demo stages S0/S1 + NVS checkpoint) | Enum parity test: registry keys match firmware enum |
 | [../ops/slo-and-alerting.md](../ops/slo-and-alerting.md) | Buffers, flush, alert routing | `telemetry_ring`, `sd_logger`, `alert_router` | Soak / capacity test against stated SLOs where feasible |
 | Roadmap **S1** (heap + OTA scheme note) | Boot observability; partition policy for future OTA | `mf_resources`, [arduino-partition-ota.md](../ops/arduino-partition-ota.md) | Boot log includes heap + largest block; developer picks OTA-capable scheme from linked doc |
+| [threat-model-and-time.md](threat-model-and-time.md) (time half) | NTP/TZ; honest "no wall clock" handling for session resume | `mf_clock` (`mf_clock_init_ntp`, `mf_clock_time_synced`, `mf_clock_monotonic_seconds`); `mf_nvs_session`; `mf_fsm_resume_restore_from_nvs` | Resume path logs `no wall clock` warning and restarts stage from elapsed=0 when SNTP has not synced; once Wi-Fi is up in S6 the existing `configTzTime()` call begins resolving without any code change |
 | Camera subsystem (S8.5) — cosmetic | Timelapse + low-FPS service-mode preview per [service-mode-contract.md](service-mode-contract.md) "Camera Behavior" and [state-machine.md](state-machine.md) "Camera Behavior per State". **Не control-input**: отказ обрабатывается как `WARN_CAMERA_FAIL` (sticky-флаг, без FSM-переходов и без degraded mode) — см. [fault-model.md](fault-model.md) "Non-control auxiliary features". | `mf_camera` (stub today with `MF_CAMERA_ENABLE=0`, real driver in S8.5); model OV2640 / OV3660 / OV5640 TBD | Smoke-test: `mf_camera_init()` возвращает OK и не валит main loop при переключении `MF_CAMERA_ENABLE`. Изоляция: симуляция отказа камеры (FFC unplugged / SCCB NACK / frame timeout) → `WARN_CAMERA_FAIL` установлен, FSM не двигается, PID/датчики работают штатно. |
 
 ## Cross-cutting concerns
@@ -23,7 +25,7 @@ Maps normative architecture documents to **expected firmware modules** and **ver
 | Concern | Documents | Module touchpoints |
 | --- | --- | --- |
 | `current_recipe` immutability | state-machine, recipe-schema | `recipe_runtime`, `runtime_fsm` |
-| Hard CO2 safety | recipe-schema, control-arbitration, fault-model | `climate_arbiter`, `fault_supervisor` |
+| Hard CO2 safety | recipe-schema, control-arbitration, fault-model | `mf_control_limits`, `mf_climate_arbiter` |
 | Time / TZ for lights | recipe-schema, [threat-model-and-time.md](threat-model-and-time.md) (normative) | `clock_manager`, `light_scheduler` |
 
 ## Maintenance rule

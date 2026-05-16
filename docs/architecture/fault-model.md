@@ -57,6 +57,20 @@ The system must remain fail-operational for non-fatal faults. Only affected func
 - `DEG_STORAGE`: logging reduced; ring buffer retained in RAM.
 - `DEG_NETWORK`: no cloud control; AP/local control active.
 
+### Firmware mapping (no separate `DEG_*` enum)
+
+Named modes above are **documentation labels**. Runtime uses:
+
+| Doc label | FSM | Sticky warn (`mf_fsm_warn_t`) | Control effect |
+| --- | --- | --- | --- |
+| `DEG_SENSOR_RH_CO2` | `DEGRADED_RUN` after `evFaultNonFatal(SCD41)` | `MF_WARN_SCD41_FAIL` | `mf_loop_rh` / `mf_loop_co2` disabled when `mf_scd41_fault_disconnected()` |
+| `DEG_SENSOR_TEMP` | `DEGRADED_RUN` after `evFaultNonFatal(MLX90614)` | `MF_WARN_MLX_FAIL` | `mf_loop_temp` disabled when `mf_mlx90614_fault_disconnected()` |
+| Water LOCKED (CRITICAL path) | `DEGRADED_RUN` after `evFaultNonFatal(WATER)` | `MF_WARN_WATER_FAIL` | `mf_water_policy` returns 0%; humidifier blocked |
+| `DEG_STORAGE` | `DEGRADED_RUN` (SD non-fatal) | `MF_WARN_SD_FAIL` | RAM logging; does not block sensor recovery |
+| `DEG_NETWORK` | (future S6/S7) | — | — |
+
+`mf_fault_supervisor` edge-detects driver faults and publishes FSM events; a second sensor fault while already in `DEGRADED_RUN` still runs `act_persist_warn` (self-loop on `evFaultNonFatal`).
+
 ## Recovery Rules
 
 - Recovery is automatic only after stable observation window passes.

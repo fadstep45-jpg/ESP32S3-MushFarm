@@ -52,6 +52,8 @@ flowchart LR
 #### S5 — Климат и арбитраж
 - **Цель:** рабочий контур RH/CO2 с hard limits.
 - **DoD:** контур стабилизируется на стенде, арбитраж соответствует `docs/architecture/control-arbitration.md`.
+- **Фаза A (код):** модули `mf_loop_*`, `mf_climate_arbiter`, embedded profile — см. чеклист [s5-acceptance.md](architecture/s5-acceptance.md).
+- **Фаза B (стенд):** PID tuning + soak 4–8 ч — после сборки hardware.
 
 #### S6 — AP/HTTP
 - **Цель:** локальное управление по `docs/api/ap-contract.md`.

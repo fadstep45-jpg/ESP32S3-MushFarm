@@ -8,11 +8,17 @@
 static bool s_present = true;
 static bool s_ok = false;
 static uint32_t s_last_ok_ms = 0;
+static int s_sim_level = -1;  // -1 disabled, 0 force absent, 1 force present
 
 #if !MF_SENSORS_MOCK
 static int s_raw_last = -1;
 static uint8_t s_stable_count = 0;
 #endif
+
+void mf_water_set_simulated_present(int level) {
+    if (level < -1 || level > 1) return;
+    s_sim_level = level;
+}
 
 void mf_water_init() {
 #if MF_SENSORS_MOCK
@@ -57,7 +63,11 @@ void mf_water_poll() {
 #endif
 }
 
-bool mf_water_present() { return s_present; }
+bool mf_water_present() {
+    if (s_sim_level == 0) return false;
+    if (s_sim_level == 1) return true;
+    return s_present;
+}
 
 bool mf_water_ok(int64_t *stale_age_ms_out) {
     int64_t age = s_ok ? (int64_t)(mf_clock_millis() - s_last_ok_ms) : INT64_MAX / 4;

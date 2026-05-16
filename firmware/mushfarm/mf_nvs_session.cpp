@@ -20,7 +20,7 @@ bool mf_session_save(const char *stage_id) {
     snap.version = MF_SESSION_VERSION;
     strncpy(snap.recipe_id, mf_recipe_get_selected_id(), sizeof(snap.recipe_id) - 1);
     strncpy(snap.stage_id, stage_id ? stage_id : "S0", sizeof(snap.stage_id) - 1);
-    snap.stage_started_unix_s = mf_clock_unix_seconds();
+    snap.stage_started_unix_s = mf_clock_unix_seconds();  // 0 if NTP not synced — resume code handles that
 
     size_t written = p.putBytes(KEY_BLOB, &snap, sizeof(snap));
     bool ok = (written == sizeof(snap));
@@ -30,8 +30,13 @@ bool mf_session_save(const char *stage_id) {
     p.end();
     if (!ok) {
         mf_log_warn("session", "save failed written=%u", (unsigned)written);
+    } else if (snap.stage_started_unix_s <= 0) {
+        mf_log_warn("session",
+                    "checkpoint recipe=%s stage=%s (no wall clock; resume will restart stage from 0)",
+                    snap.recipe_id, snap.stage_id);
     } else {
-        mf_log_info("session", "checkpoint recipe=%s stage=%s", snap.recipe_id, snap.stage_id);
+        mf_log_info("session", "checkpoint recipe=%s stage=%s unix=%lld",
+                    snap.recipe_id, snap.stage_id, (long long)snap.stage_started_unix_s);
     }
     return ok;
 }

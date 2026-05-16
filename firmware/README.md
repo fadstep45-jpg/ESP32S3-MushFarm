@@ -1,4 +1,4 @@
-﻿# MushFarm firmware (Arduino IDE)
+# MushFarm firmware (Arduino IDE)
 
 Прошивка ESP32-S3 для грибной фермы. Локальная разработка ведётся в **Arduino IDE 2.x**, без ESP-IDF и без явных вызовов FreeRTOS API.
 
@@ -49,6 +49,15 @@
 ## OTA и partition scheme (S1)
 
 Нормативная заметка для Arduino IDE: [docs/ops/arduino-partition-ota.md](../docs/ops/arduino-partition-ota.md).
+
+## S5 — климат и арбитраж
+
+Модули: `mf_control_profile`, `mf_control_limits`, `mf_pid`, `mf_loop_rh` / `mf_loop_co2` / `mf_loop_temp`, `mf_climate_arbiter`, `mf_climate_trace`, обёртка `mf_climate`.
+
+- Тик климата: `MF_TICK_CLIMATE_MS` (2 с) в `mf_config.h`.
+- Setpoints/limitы — embedded-профиль по стадии demo (`mf_control_profile_load_demo_stage`), без YAML на устройстве.
+- В RAM ring (`mf_batch_logger`) каждый climate-tick пишется compact-строка `arb …`; полный trace — при смене `arb_reason_code` или каждые 10 тиков.
+- Mock golden vectors: `MF_MOCK_CLIMATE_SCENARIO` в `mf_config.h` (см. [docs/architecture/s5-acceptance.md](../docs/architecture/s5-acceptance.md)).
 
 ## Камера
 

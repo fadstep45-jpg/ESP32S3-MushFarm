@@ -45,13 +45,23 @@ enum mf_fsm_result_t {
 };
 
 enum mf_fsm_warn_t {
-    MF_WARN_NONE = 0,
-    MF_WARN_SD_FAIL = (1u << 0),
+    MF_WARN_NONE         = 0,
+    MF_WARN_SD_FAIL      = (1u << 0),
+    MF_WARN_SCD41_FAIL   = (1u << 1),
+    MF_WARN_MLX_FAIL     = (1u << 2),
+    MF_WARN_WATER_FAIL   = (1u << 3),
+    MF_WARN_CAMERA_FAIL  = (1u << 4),
 };
 
+// Granular non-fatal subsystem codes carried by evFaultNonFatal.
+// fault-model.md / state-machine.md: each maps to a sticky warn-flag,
+// drives ACTIVE_RUN -> DEGRADED_RUN, and is cleared by evRecoveryValidated.
 enum mf_fsm_nonfatal_t {
-    MF_NONFATAL_NONE = 0,
-    MF_NONFATAL_SD = 1,
+    MF_NONFATAL_NONE     = 0,
+    MF_NONFATAL_SD       = 1,
+    MF_NONFATAL_SCD41    = 2,
+    MF_NONFATAL_MLX90614 = 3,
+    MF_NONFATAL_WATER    = 4,
 };
 
 enum mf_fsm_fatal_t {
@@ -73,6 +83,12 @@ const char *mf_fsm_event_str(mf_fsm_event_t e);
 mf_runtime_state_t mf_fsm_state();
 uint32_t mf_fsm_warn_flags();
 bool mf_fsm_emergency_latched();
+
+// Sticky warn-flag mutators used by drivers / supervisor when fault state
+// changes outside the regular FSM event flow (e.g. driver recovers but no
+// recovery event is yet warranted).
+void mf_fsm_set_warn(uint32_t mask);
+void mf_fsm_clear_warn(uint32_t mask);
 
 bool mf_fsm_g_sensors_min_set();
 bool mf_fsm_g_hard_limits_safe();

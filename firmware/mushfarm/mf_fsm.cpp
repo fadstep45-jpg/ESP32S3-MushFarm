@@ -1,4 +1,5 @@
 #include "mf_fsm.h"
+#include "mf_control_limits.h"
 #include "mf_log.h"
 #include "mf_clock.h"
 #include "mf_recipe.h"
@@ -54,18 +55,39 @@ mf_runtime_state_t mf_fsm_state() { return s_state; }
 uint32_t mf_fsm_warn_flags() { return s_warn_flags; }
 bool mf_fsm_emergency_latched() { return s_emergency_latch; }
 
+void mf_fsm_set_warn(uint32_t mask) {
+    uint32_t before = s_warn_flags;
+    s_warn_flags |= mask;
+    if (s_warn_flags != before) {
+        mf_log_warn("fsm", "warn set mask=0x%x flags=0x%x", (unsigned)mask, (unsigned)s_warn_flags);
+    }
+}
+
+void mf_fsm_clear_warn(uint32_t mask) {
+    uint32_t before = s_warn_flags;
+    s_warn_flags &= ~mask;
+    if (s_warn_flags != before) {
+        mf_log_info("fsm", "warn cleared mask=0x%x flags=0x%x", (unsigned)mask, (unsigned)s_warn_flags);
+    }
+}
+
 bool mf_fsm_g_sensors_min_set() {
     int64_t age = 0;
     return mf_scd41_ok(&age) && mf_mlx90614_ok(&age) && mf_water_ok(&age);
 }
 
 bool mf_fsm_g_hard_limits_safe() {
-    return mf_scd41_co2_ppm() < 8000.0f;
+    return mf_control_limits_hard_safe();
 }
 
 bool mf_fsm_g_recovery_stable() {
     if (!mf_fsm_g_sensors_min_set()) return false;
-    if (s_warn_flags & MF_WARN_SD_FAIL) return false;
+    // Sensor-side warn flags must be cleared by the supervisor (which only
+    // does so after the per-driver recovery streak passes) before we let the
+    // cycle re-enter ACTIVE_RUN. SD warn does NOT block recovery: a missing
+    // SD is logged from RAM and shouldn't pin the cycle in DEGRADED forever.
+    const uint32_t blocking = MF_WARN_SCD41_FAIL | MF_WARN_MLX_FAIL | MF_WARN_WATER_FAIL;
+    if (s_warn_flags & blocking) return false;
     return true;
 }
 
@@ -118,9 +140,16 @@ static bool act_noop(const mf_fsm_event_ctx_t *ctx) {
     return true;
 }
 
-static bool act_persist_warn_sd(const mf_fsm_event_ctx_t *ctx) {
-    if (ctx && ctx->nonfatal_code == MF_NONFATAL_SD) {
-        s_warn_flags |= MF_WARN_SD_FAIL;
+static bool act_persist_warn(const mf_fsm_event_ctx_t *ctx) {
+    if (!ctx) return true;
+    switch (ctx->nonfatal_code) {
+    case MF_NONFATAL_SD:       s_warn_flags |= MF_WARN_SD_FAIL;    break;
+    case MF_NONFATAL_SCD41:    s_warn_flags |= MF_WARN_SCD41_FAIL; break;
+    case MF_NONFATAL_MLX90614: s_warn_flags |= MF_WARN_MLX_FAIL;   break;
+    case MF_NONFATAL_WATER:    s_warn_flags |= MF_WARN_WATER_FAIL; break;
+    case MF_NONFATAL_NONE:
+    default:
+        break;
     }
     return true;
 }
@@ -172,6 +201,9 @@ static bool act_apply_config(const mf_fsm_event_ctx_t *ctx) {
 
 static bool act_recovery_clear_warn(const mf_fsm_event_ctx_t *ctx) {
     (void)ctx;
+    // Recovery-validated only clears the SD warn (which has no separate
+    // recovery streak); sensor warns are cleared by mf_fault_supervisor
+    // directly when each per-driver streak passes.
     s_warn_flags &= ~MF_WARN_SD_FAIL;
     return true;
 }
@@ -214,24 +246,24 @@ static const transition_t k_transitions[] = {
     { MF_STATE_BOOT, MF_EV_BOOT_COMPLETE, g_boot_idle, MF_STATE_IDLE_READY, act_noop, "boot ok, no resume" },
     { MF_STATE_BOOT, MF_EV_BOOT_COMPLETE, g_boot_resume_ok, MF_STATE_ACTIVE_RUN, act_noop, "boot resume active" },
     { MF_STATE_BOOT, MF_EV_BOOT_COMPLETE, g_boot_resume_deg, MF_STATE_DEGRADED_RUN, act_noop, "boot resume degraded" },
-    { MF_STATE_BOOT, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_BOOT, act_persist_warn_sd, "warn during boot" },
+    { MF_STATE_BOOT, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_BOOT, act_persist_warn, "warn during boot" },
 
     { MF_STATE_SETUP_AP, MF_EV_APPLY_CONFIG, g_config_ready_fn, MF_STATE_IDLE_READY, act_apply_config, "apply config" },
     { MF_STATE_SETUP_AP, MF_EV_FAULT_FATAL, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "fatal" },
     { MF_STATE_SETUP_AP, MF_EV_EMERGENCY_STOP, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "estop" },
-    { MF_STATE_SETUP_AP, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_SETUP_AP, act_persist_warn_sd, "warn in AP" },
+    { MF_STATE_SETUP_AP, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_SETUP_AP, act_persist_warn, "warn in AP" },
 
     { MF_STATE_IDLE_READY, MF_EV_SELECT_RECIPE, g_recipe_selected, MF_STATE_IDLE_READY, act_noop, "select recipe" },
     { MF_STATE_IDLE_READY, MF_EV_START_CYCLE, g_start_cycle, MF_STATE_ACTIVE_RUN, act_start_cycle, "start" },
     { MF_STATE_IDLE_READY, MF_EV_SERVICE_BTN_LONG_PRESS, nullptr, MF_STATE_SETUP_AP, act_noop, "svc->AP" },
     { MF_STATE_IDLE_READY, MF_EV_FAULT_FATAL, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "fatal" },
     { MF_STATE_IDLE_READY, MF_EV_EMERGENCY_STOP, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "estop" },
-    { MF_STATE_IDLE_READY, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_IDLE_READY, act_persist_warn_sd, "warn idle" },
+    { MF_STATE_IDLE_READY, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_IDLE_READY, act_persist_warn, "warn idle" },
     { MF_STATE_IDLE_READY, MF_EV_EMERGENCY_ACK, nullptr, MF_STATE_IDLE_READY, nullptr, "ack noop" },
     { MF_STATE_IDLE_READY, MF_EV_STOP_CYCLE, nullptr, MF_STATE_IDLE_READY, nullptr, "stop noop" },
 
     { MF_STATE_ACTIVE_RUN, MF_EV_PAUSE_CYCLE, nullptr, MF_STATE_PAUSED_SAFE, act_noop, "pause" },
-    { MF_STATE_ACTIVE_RUN, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_DEGRADED_RUN, act_persist_warn_sd, "nf->deg" },
+    { MF_STATE_ACTIVE_RUN, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_DEGRADED_RUN, act_persist_warn, "nf->deg" },
     { MF_STATE_ACTIVE_RUN, MF_EV_FAULT_FATAL, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "fatal" },
     { MF_STATE_ACTIVE_RUN, MF_EV_EMERGENCY_STOP, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "estop" },
     { MF_STATE_ACTIVE_RUN, MF_EV_STOP_CYCLE, nullptr, MF_STATE_IDLE_READY, act_stop_cycle, "stop" },
@@ -240,12 +272,14 @@ static const transition_t k_transitions[] = {
 
     { MF_STATE_PAUSED_SAFE, MF_EV_RESUME_CYCLE, g_resume_cycle, MF_STATE_ACTIVE_RUN, act_noop, "resume" },
     { MF_STATE_PAUSED_SAFE, MF_EV_PAUSE_CYCLE, nullptr, MF_STATE_PAUSED_SAFE, nullptr, "pause noop" },
-    { MF_STATE_PAUSED_SAFE, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_DEGRADED_RUN, act_persist_warn_sd, "nf->deg" },
+    { MF_STATE_PAUSED_SAFE, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_DEGRADED_RUN, act_persist_warn, "nf->deg" },
     { MF_STATE_PAUSED_SAFE, MF_EV_FAULT_FATAL, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "fatal" },
     { MF_STATE_PAUSED_SAFE, MF_EV_EMERGENCY_STOP, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "estop" },
     { MF_STATE_PAUSED_SAFE, MF_EV_STOP_CYCLE, nullptr, MF_STATE_IDLE_READY, act_stop_cycle, "stop" },
 
     { MF_STATE_DEGRADED_RUN, MF_EV_PAUSE_CYCLE, nullptr, MF_STATE_PAUSED_SAFE, act_noop, "pause" },
+    { MF_STATE_DEGRADED_RUN, MF_EV_FAULT_NONFATAL, nullptr, MF_STATE_DEGRADED_RUN, act_persist_warn,
+      "nf persist warn" },
     { MF_STATE_DEGRADED_RUN, MF_EV_RECOVERY_VALIDATED, mf_fsm_g_recovery_stable, MF_STATE_ACTIVE_RUN,
       act_recovery_clear_warn, "recovery" },
     { MF_STATE_DEGRADED_RUN, MF_EV_FAULT_FATAL, nullptr, MF_STATE_EMERGENCY_STOP, act_emergency_latch, "fatal" },
@@ -337,9 +371,18 @@ bool mf_fsm_resume_restore_from_nvs() {
     s_resume_pending = true;
 
     int64_t now_unix = mf_clock_unix_seconds();
-    int64_t elapsed = (now_unix > snap.stage_started_unix_s && snap.stage_started_unix_s > 0)
-                          ? (now_unix - snap.stage_started_unix_s)
-                          : 0;
+    int64_t elapsed = 0;
+    if (!mf_clock_time_synced() || now_unix <= 0 || snap.stage_started_unix_s <= 0) {
+        // Honest behaviour: without a wall clock we can't reconstruct how long
+        // the power was out, so the stage restarts from elapsed=0 (a few
+        // extra minutes/hours of grow is harmless; faking a number would
+        // shorten the stage and is unsafe).
+        mf_log_warn("fsm", "resume: no wall clock (synced=%d now=%lld snap_start=%lld); restart stage from elapsed=0",
+                    (int)mf_clock_time_synced(), (long long)now_unix,
+                    (long long)snap.stage_started_unix_s);
+    } else if (now_unix > snap.stage_started_unix_s) {
+        elapsed = now_unix - snap.stage_started_unix_s;
+    }
     mf_recipe_apply_checkpoint(snap.stage_id, elapsed);
     mf_log_info("fsm", "resume pending recipe=%s stage=%s elapsed=%llds",
                 snap.recipe_id, snap.stage_id, (long long)elapsed);

@@ -1,4 +1,5 @@
 #include "mf_sensor_scd41.h"
+#include "mf_mock_climate.h"
 #include "mf_config.h"
 #include "mf_log.h"
 #include "mf_clock.h"
@@ -116,7 +117,12 @@ void mf_scd41_poll() {
         }
     }
     if (good) {
-        mark_good_sample(now);
+        mf_mock_climate_apply_scd41(&s_co2, &s_rh, &s_t);
+        if (mf_mock_climate_get_scenario() == MF_MOCK_SCENARIO_DISCONNECT) {
+            mark_bad_cycle();
+        } else {
+            mark_good_sample(now);
+        }
     } else {
         mark_bad_cycle();
     }

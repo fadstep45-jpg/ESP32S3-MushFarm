@@ -22,13 +22,21 @@
 #include "mf_batch_logger.h"
 #include "mf_recipe.h"
 #include "mf_fsm.h"
+#include "mf_fault_supervisor.h"
+#include "mf_water_policy.h"
 #include "mf_climate.h"
+#include "mf_climate_trace.h"
+#include "mf_control_profile.h"
 #include "mf_camera.h"
 
 static void task_sensors() {
     mf_scd41_poll();
     mf_mlx90614_poll();
     mf_water_poll();
+    // Edge-detect sensor disconnect/recovery and publish FSM events.
+    // Without this, DEGRADED_RUN was unreachable from any sensor fault
+    // and mf_fsm_recovery_validated() had zero call sites in production.
+    mf_fault_supervisor_tick();
 }
 
 static void task_climate() {
@@ -36,15 +44,23 @@ static void task_climate() {
 }
 
 static void task_trace() {
-    mf_log_info("trace", "state=%s stage=%s recipe=%s rh=%.1f%% co2=%.0f t=%.1fC obj=%.1fC water=%d",
+    mf_log_info("trace",
+                "state=%s stage=%s recipe=%s warn=0x%x rh=%.1f%% co2=%.0f t=%.1fC obj=%.1fC "
+                "water=%d wp=%s arb=%s fan=%.0f hum=%.0f tsync=%d",
                 mf_fsm_state_str(mf_fsm_state()),
                 mf_recipe_current_stage_id(),
                 mf_fsm_selected_recipe_id(),
+                (unsigned)mf_fsm_warn_flags(),
                 mf_scd41_rh_percent(),
                 mf_scd41_co2_ppm(),
                 mf_scd41_temp_c(),
                 mf_mlx90614_object_c(),
-                (int)mf_water_present());
+                (int)mf_water_present(),
+                mf_water_policy_state_str(mf_water_policy_state()),
+                mf_climate_trace_last_reason_str(),
+                mf_climate_trace_last_fan_pct(),
+                mf_climate_trace_last_hum_pct(),
+                (int)mf_clock_time_synced());
 }
 
 static void task_recipe() {
@@ -73,10 +89,18 @@ void setup() {
     mf_scd41_init();
     mf_mlx90614_init();
     mf_water_init();
+    mf_water_policy_init();
+    mf_fault_supervisor_init();
     mf_service_btn_init();
+
+    // Request NTP/TZ early so as soon as Wi-Fi comes up (S6) the wall clock
+    // is set without an explicit second step. Safe to call before any
+    // network exists — the SNTP client just waits.
+    mf_clock_init_ntp(MF_CLOCK_TZ_POSIX, MF_CLOCK_NTP_PRIMARY, MF_CLOCK_NTP_SECONDARY);
 
     // SD logging is disabled in the skeleton; the RAM ring buffer still runs.
     mf_batch_logger_init(false);
+    mf_control_profile_load_defaults();
 
     mf_fsm_resume_restore_from_nvs();
     mf_fsm_boot_done_config_ok();

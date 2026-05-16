@@ -1,4 +1,6 @@
 #include "mf_sensor_mlx90614.h"
+#include "mf_mock_climate.h"
+#include "mf_sensor_scd41.h"
 #include "mf_config.h"
 #include "mf_log.h"
 #include "mf_clock.h"
@@ -99,6 +101,8 @@ void mf_mlx90614_poll() {
         }
     }
     if (good) {
+        float air = mf_scd41_temp_c();
+        mf_mock_climate_apply_mlx(&s_obj_c, air);
         mark_good(now);
     } else {
         mark_bad();

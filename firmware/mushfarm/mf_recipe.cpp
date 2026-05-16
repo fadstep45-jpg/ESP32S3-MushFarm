@@ -1,4 +1,6 @@
 #include "mf_recipe.h"
+#include "mf_control_profile.h"
+#include "mf_climate_arbiter.h"
 #include "mf_fsm.h"
 #include "mf_log.h"
 #include "mf_clock.h"
@@ -40,8 +42,12 @@ static void apply_stage_index(uint8_t idx) {
     s_stage_idx = idx;
     if (is_demo_recipe()) {
         s_rh_target = k_demo_stages[idx].rh_target;
+        mf_control_profile_load_demo_stage(k_demo_stages[idx].id);
+        mf_control_profile_log_current();
+        mf_climate_arbiter_reset();
     } else if (s_selected[0] != '\0') {
         s_rh_target = 90.0f;
+        mf_control_profile_load_defaults();
     }
 }
 
@@ -77,6 +83,7 @@ void mf_recipe_build_runtime_snapshot() {
     s_stage_elapsed_s = 0;
     s_timer_frozen = false;
     s_last_tick_ms = mf_clock_millis();
+    mf_control_profile_load_defaults();
     apply_stage_index(0);
     mf_log_info("recipe", "runtime snapshot id=%s stage=%s rh_target=%.1f%%",
                 s_selected, mf_recipe_current_stage_id(), s_rh_target);
@@ -98,7 +105,7 @@ void mf_recipe_apply_checkpoint(const char *stage_id, int64_t stage_elapsed_s) {
 }
 
 float mf_recipe_rh_target_percent() {
-    return s_rh_target;
+    return mf_control_profile_current()->rh_target_percent;
 }
 
 int64_t mf_recipe_stage_elapsed_seconds() {

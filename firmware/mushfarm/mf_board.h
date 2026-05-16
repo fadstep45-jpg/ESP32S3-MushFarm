@@ -18,4 +18,11 @@
 
 #define MF_SERVICE_BUTTON_PIN 0
 
+// Camera DVP pins — TBD. The board ships with a 24-pin FFC camera
+// connector; concrete GPIOs (Y2..Y9, PCLK, VSYNC, HREF, XCLK, SIOD,
+// SIOC, PWDN, RESET) depend on the final dev-board / PCB revision and
+// will be filled in together with the camera driver. See
+// docs/Подключение компонентов.md, section "Камера (DVP)" and the
+// full GPIO table in docs/board-pinout-esp32s3.md.
+
 void mf_board_log_pin_map();

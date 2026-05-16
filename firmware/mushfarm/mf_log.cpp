@@ -4,12 +4,14 @@
 #include <stdio.h>
 
 #define MF_LOG_LINE_MAX 192
+// Prefix is ~32 bytes worst-case; keep combined line within one buffer.
+#define MF_LOG_OUT_MAX (MF_LOG_LINE_MAX + 40)
 
 static void mf_log_emit(char level, const char *tag, const char *fmt, va_list ap) {
     char body[MF_LOG_LINE_MAX];
     vsnprintf(body, sizeof(body), fmt, ap);
 
-    char line[MF_LOG_LINE_MAX];
+    char line[MF_LOG_OUT_MAX];
     snprintf(line, sizeof(line), "%c [%lu][%s] %s", level, (unsigned long)millis(), tag, body);
 
     Serial.println(line);

@@ -154,12 +154,6 @@ static bool act_persist_warn(const mf_fsm_event_ctx_t *ctx) {
     return true;
 }
 
-static bool act_clear_session(const mf_fsm_event_ctx_t *ctx) {
-    (void)ctx;
-    mf_session_clear();
-    return true;
-}
-
 static bool act_stop_cycle(const mf_fsm_event_ctx_t *ctx) {
     (void)ctx;
     mf_recipe_runtime_abort();

@@ -47,14 +47,27 @@ bool mf_clock_time_synced() {
 
 void mf_clock_init_ntp(const char *tz_posix, const char *ntp_primary,
                        const char *ntp_secondary) {
-    // Arduino-ESP32 exposes configTzTime(); it programs SNTP and the libc
-    // TZ environment variable in one call. Non-blocking: it kicks off the
-    // SNTP client and returns immediately. Without Wi-Fi the request will
-    // sit waiting; we don't block boot on it.
+    (void)ntp_primary;
+    (void)ntp_secondary;
+    // TZ only until S6 brings Wi-Fi. configTzTime() pulls SNTP/lwIP and on
+    // ESP32 core 3.0.x links ip6_input -> lwip_hook_ip6_input, which is
+    // defined in the Network library — not linked in this sketch yet.
+    if (!tz_posix) tz_posix = "UTC0";
+    setenv("TZ", tz_posix, 1);
+    tzset();
+    mf_log_info("clock", "TZ set to %s; SNTP deferred until Wi-Fi (S6)", tz_posix);
+}
+
+#if MF_CLOCK_SNTP_ENABLED
+#include <WiFi.h>
+
+void mf_clock_start_sntp(const char *tz_posix, const char *ntp_primary,
+                         const char *ntp_secondary) {
     if (!tz_posix) tz_posix = "UTC0";
     if (!ntp_primary) ntp_primary = "pool.ntp.org";
     if (!ntp_secondary) ntp_secondary = "time.google.com";
     configTzTime(tz_posix, ntp_primary, ntp_secondary);
-    mf_log_info("clock", "NTP requested tz=%s primary=%s secondary=%s (sync awaits Wi-Fi)",
+    mf_log_info("clock", "SNTP started tz=%s primary=%s secondary=%s",
                 tz_posix, ntp_primary, ntp_secondary);
 }
+#endif

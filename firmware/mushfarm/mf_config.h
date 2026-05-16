@@ -51,11 +51,10 @@
 #define MF_WATER_PULSE_FLAT_LIMIT      3u
 
 // S8 NTP/TZ — recipe lighting and event timestamps need wall clock.
-// POSIX TZ string (no DST for Russia). configTzTime() is non-blocking;
-// without Wi-Fi the SNTP client just sits waiting (S6 will bring the link
-// up). Until synced, mf_clock_time_synced() stays false and session
-// resume falls back to elapsed=0 honestly instead of lying with a zero
-// unix timestamp.
+// Boot sets TZ via setenv only; SNTP (configTzTime) stays off until S6
+// enables MF_CLOCK_SNTP_ENABLED and calls mf_clock_start_sntp() after
+// Wi-Fi is up — avoids linking lwIP hooks without the Network library.
+#define MF_CLOCK_SNTP_ENABLED    0
 #define MF_CLOCK_TZ_POSIX        "MSK-3"
 #define MF_CLOCK_NTP_PRIMARY     "pool.ntp.org"
 #define MF_CLOCK_NTP_SECONDARY   "time.google.com"

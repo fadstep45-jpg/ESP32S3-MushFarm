@@ -27,8 +27,10 @@ jobs:
 
       - name: Write git metadata header
         run: |
-          printf '#pragma once\n#define MF_GIT_SHORT_SHA "%s"\n' \
-            "${{ steps.gitsha.outputs.short }}" > firmware/mushfarm/mf_git_info.h
+          {
+            echo '#pragma once'
+            echo '#define MF_GIT_SHORT_SHA "${{ steps.gitsha.outputs.short }}"'
+          } > firmware/mushfarm/mf_git_info.h
 
       - name: Setup arduino-cli
         uses: arduino/setup-arduino-cli@v2
@@ -39,7 +41,7 @@ jobs:
           path: |
             ~/.arduino15
             ~/Arduino/libraries
-          key: arduino-${{ runner.os }}-esp32-${{ env.ESP32_CORE_VERSION }}-${{ hashFiles('firmware/arduino-libs.txt') }}
+          key: arduino-${{ runner.os }}-esp32-${{ env.ESP32_CORE_VERSION }}-${{ hashFiles('firmware/arduino-libs.txt', 'firmware/mushfarm/**') }}
           restore-keys: |
             arduino-${{ runner.os }}-esp32-${{ env.ESP32_CORE_VERSION }}-
 
@@ -62,10 +64,19 @@ jobs:
         run: |
           set -o pipefail
           arduino-cli compile \
+            --clean \
             --fqbn "${FQBN}" \
             --output-dir build \
             --warnings more \
             "${SKETCH_DIR}" 2>&1 | tee compile.log
+
+      - name: Report compile failure
+        if: failure()
+        run: |
+          echo "### Compile log (tail)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          tail -80 compile.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload compile log on failure
         if: failure()

@@ -25,6 +25,11 @@ jobs:
         id: gitsha
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Write git metadata header
+        run: |
+          printf '#pragma once\n#define MF_GIT_SHORT_SHA "%s"\n' \
+            "${{ steps.gitsha.outputs.short }}" > firmware/mushfarm/mf_git_info.h
+
       - name: Setup arduino-cli
         uses: arduino/setup-arduino-cli@v2
 
@@ -47,21 +52,30 @@ jobs:
 
       - name: Install libraries
         run: |
-          arduino-cli lib install "ArduinoJson@7.1.0"
-          arduino-cli lib install "PubSubClient@2.8"
-          arduino-cli lib install "Sensirion I2C SCD4x@1.1.0"
-          arduino-cli lib install "Adafruit MLX90614 Library@2.1.5"
+          # Avoid duplicate ArduinoJson folders breaking lib install / compile.
+          rm -rf "$HOME/Arduino/libraries/ArduinoJson"*
+          grep -v '^[[:space:]]*#' firmware/arduino-libs.txt | grep -v '^[[:space:]]*$' | while read -r spec; do
+            arduino-cli lib install "$spec"
+          done
 
       - name: Compile sketch
         run: |
+          set -o pipefail
           arduino-cli compile \
             --fqbn "${FQBN}" \
-            --build-property "build.extra_flags=-DMF_GIT_SHORT_SHA_RAW=${{ steps.gitsha.outputs.short }}" \
             --output-dir build \
             --warnings more \
-            "${SKETCH_DIR}"
+            "${SKETCH_DIR}" 2>&1 | tee compile.log
+
+      - name: Upload compile log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-log
+          path: compile.log
 
       - name: Upload firmware artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: mushfarm-fw

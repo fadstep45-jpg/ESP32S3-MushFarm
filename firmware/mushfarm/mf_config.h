@@ -5,14 +5,7 @@
 
 #define MF_FW_VERSION "0.2.0-arduino"
 
-// CI passes -DMF_GIT_SHORT_SHA_RAW=abc123 (no quotes); stringify to a C string.
-#ifdef MF_GIT_SHORT_SHA_RAW
-#define MF_GIT_SHA_STR2(x) #x
-#define MF_GIT_SHA_STR(x) MF_GIT_SHA_STR2(x)
-#define MF_GIT_SHORT_SHA MF_GIT_SHA_STR(MF_GIT_SHORT_SHA_RAW)
-#elif !defined(MF_GIT_SHORT_SHA)
-#define MF_GIT_SHORT_SHA "unknown"
-#endif
+#include "mf_git_info.h"
 
 // Synthetic sensor values when no I2C hardware is connected.
 // Disable on real hardware to use the I2C drivers.

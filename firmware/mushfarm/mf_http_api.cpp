@@ -1,6 +1,8 @@
 #include "mf_http_api.h"
 #include "mf_config.h"
 #include "mf_http_codes.h"
+#include "mf_api_codes.h"
+#include "mf_cmd_dispatch.h"
 #include "mf_fsm.h"
 #include "mf_recipe.h"
 #include "mf_wifi.h"
@@ -10,10 +12,14 @@
 #include "mf_sensor_mlx90614.h"
 #include "mf_sensor_water.h"
 #include "mf_net_config.h"
+#include "mf_mqtt_config.h"
 #include "mf_nvs_session.h"
 #include "mf_actuator_test.h"
 #include "mf_actuators.h"
 #include "mf_log.h"
+#if MF_MQTT_ENABLE
+#include "mf_mqtt.h"
+#endif
 
 #if MF_HTTP_API
 
@@ -57,26 +63,16 @@ static void http_send_envelope(bool ok, const char *code, const char *detail,
     s_server.send(ok ? 200 : 400, "application/json", out);
 }
 
+static void http_send_cmd_result(const mf_cmd_result_t *res) {
+    if (res->ok) {
+        http_send_envelope(true, res->code, res->detail, JsonVariantConst());
+    } else {
+        http_send_envelope(false, res->code, res->detail, JsonVariantConst());
+    }
+}
+
 static void http_send_error(const char *code, const char *detail) {
     http_send_envelope(false, code, detail, JsonVariantConst());
-}
-
-static void http_send_ok_empty(const char *code) {
-    http_send_envelope(true, code, nullptr, JsonVariantConst());
-}
-
-static const char *fsm_result_code(mf_fsm_result_t r) {
-    switch (r) {
-    case MF_FSM_OK:
-    case MF_FSM_NOOP:
-        return MF_HTTP_ACK_OK;
-    case MF_FSM_ERR_LATCHED:
-        return MF_HTTP_ERR_LATCHED;
-    case MF_FSM_ERR_GUARD:
-    case MF_FSM_ERR_STATE:
-    default:
-        return MF_HTTP_ERR_STATE;
-    }
 }
 
 static void handle_get_status() {
@@ -98,6 +94,11 @@ static void handle_get_status() {
     wifi["rssi"] = mf_wifi_sta_rssi();
     wifi["ip"] = mf_wifi_sta_ip_str();
     wifi["softap_active"] = mf_wifi_softap_active();
+#if MF_MQTT_ENABLE
+    JsonObject mqtt = payload.createNestedObject("mqtt");
+    mqtt["configured"] = mf_mqtt_config_is_configured();
+    mqtt["connected"] = mf_mqtt_connected();
+#endif
     http_send_envelope(true, MF_HTTP_ACK_OK, nullptr, payload);
 }
 
@@ -138,12 +139,7 @@ static void handle_get_recipes_list() {
     http_make_request_id();
     StaticJsonDocument<256> doc;
     JsonObject payload = doc.to<JsonObject>();
-    JsonArray items = payload.createNestedArray("items");
-    JsonObject r0 = items.createNestedObject();
-    r0["recipe_id"] = "embedded_demo";
-    r0["name"] = "Embedded demo (S0/S1)";
-    r0["rev"] = 1;
-    payload["total"] = 1;
+    mf_cmd_fill_recipe_list(payload);
     http_send_envelope(true, MF_HTTP_ACK_OK, nullptr, payload);
 }
 
@@ -151,59 +147,36 @@ static void handle_get_recipe_embedded_demo() {
     http_make_request_id();
     StaticJsonDocument<384> doc;
     JsonObject payload = doc.to<JsonObject>();
-    payload["recipe_id"] = "embedded_demo";
-    JsonArray stages = payload.createNestedArray("stages");
-    JsonObject s0 = stages.createNestedObject();
-    s0["id"] = "S0";
-    s0["duration_s"] = 120;
-    s0["rh_target"] = 88.0;
-    JsonObject s1 = stages.createNestedObject();
-    s1["id"] = "S1";
-    s1["duration_s"] = 300;
-    s1["rh_target"] = 92.0;
+    if (!mf_cmd_fill_recipe_get("embedded_demo", payload)) {
+        http_send_error(MF_API_ERR_RECIPE_NOT_FOUND, "Unknown recipe");
+        return;
+    }
     http_send_envelope(true, MF_HTTP_ACK_OK, nullptr, payload);
 }
 
 static void handle_post_recipe_select_embedded_demo() {
     http_make_request_id();
-    if (mf_fsm_state() != MF_STATE_IDLE_READY) {
-        http_send_error(MF_HTTP_ERR_STATE, "Select recipe only in IDLE_READY");
-        return;
-    }
-    mf_fsm_select_recipe("embedded_demo");
-    http_send_ok_empty(MF_HTTP_ACK_OK);
-}
-
-static void handle_post_cycle(const char *action, mf_fsm_result_t (*fn)()) {
-    http_make_request_id();
-    mf_fsm_result_t r = fn();
-    bool ok = (r == MF_FSM_OK || r == MF_FSM_NOOP);
-    const char *code = fsm_result_code(r);
-    if (ok) {
-        http_send_ok_empty(code);
-    } else {
-        http_send_error(code, "FSM rejected command");
-    }
+    mf_cmd_result_t res = mf_cmd_recipe_select("embedded_demo");
+    http_send_cmd_result(&res);
 }
 
 static void handle_post_cycle_start() {
     http_make_request_id();
+    const char *rid = nullptr;
+    char rid_buf[48];
     if (s_server.hasArg("plain")) {
         StaticJsonDocument<128> body;
         if (deserializeJson(body, s_server.arg("plain")) == DeserializationError::Ok) {
-            const char *rid = body["recipe_id"] | "";
-            if (rid[0]) {
-                mf_fsm_select_recipe(rid);
+            const char *r = body["recipe_id"] | "";
+            if (r[0]) {
+                strncpy(rid_buf, r, sizeof(rid_buf) - 1);
+                rid_buf[sizeof(rid_buf) - 1] = '\0';
+                rid = rid_buf;
             }
         }
     }
-    mf_fsm_result_t r = mf_fsm_start_cycle();
-    bool ok = (r == MF_FSM_OK || r == MF_FSM_NOOP);
-    if (ok) {
-        http_send_ok_empty(fsm_result_code(r));
-    } else {
-        http_send_error(fsm_result_code(r), "Cannot start cycle");
-    }
+    mf_cmd_result_t res = mf_cmd_cycle_start(rid);
+    http_send_cmd_result(&res);
 }
 
 static mf_actuator_t parse_actuator(const char *name) {
@@ -245,7 +218,7 @@ static void handle_post_test_actuator() {
         http_send_error(MF_HTTP_ERR_SAFETY_LIMIT, "Actuator test denied");
         return;
     }
-    http_send_ok_empty(MF_HTTP_ACK_OK);
+    http_send_envelope(true, MF_HTTP_ACK_OK, nullptr, JsonVariantConst());
 }
 
 static void handle_post_config_apply() {
@@ -254,29 +227,52 @@ static void handle_post_config_apply() {
         http_send_error(MF_HTTP_ERR_SCHEMA_INVALID, "JSON body required");
         return;
     }
-    StaticJsonDocument<384> body;
+    StaticJsonDocument<512> body;
     if (deserializeJson(body, s_server.arg("plain")) != DeserializationError::Ok) {
         http_send_error(MF_HTTP_ERR_SCHEMA_INVALID, "Invalid JSON");
         return;
     }
     JsonObject wifi = body["wifi"];
-    if (wifi.isNull()) {
-        http_send_error(MF_HTTP_ERR_SCHEMA_INVALID, "wifi object required");
+    if (!wifi.isNull()) {
+        const char *ssid = wifi["ssid"] | "";
+        const char *pass = wifi["password"] | "";
+        if (!ssid[0]) {
+            http_send_error(MF_HTTP_ERR_SCHEMA_INVALID, "ssid required");
+            return;
+        }
+        if (!mf_net_config_save(ssid, pass)) {
+            http_send_error(MF_HTTP_ERR_STATE, "Failed to save Wi-Fi credentials");
+            return;
+        }
+        mf_log_info("http", "wifi credentials saved");
+    } else if (!mf_net_config_is_configured()) {
+        http_send_error(MF_HTTP_ERR_SCHEMA_INVALID, "wifi object required on first provision");
         return;
     }
-    const char *ssid = wifi["ssid"] | "";
-    const char *pass = wifi["password"] | "";
-    if (!ssid[0]) {
-        http_send_error(MF_HTTP_ERR_SCHEMA_INVALID, "ssid required");
-        return;
+
+#if MF_MQTT_ENABLE
+    JsonObject mqtt = body["mqtt"];
+    if (!mqtt.isNull()) {
+        const char *host = mqtt["broker"] | mqtt["host"] | "";
+        uint16_t port = mqtt["port"] | 1883;
+        const char *user = mqtt["username"] | mqtt["user"] | "";
+        const char *pass = mqtt["password"] | "";
+        const char *devid = mqtt["device_id"] | "";
+        if (!host[0]) {
+            http_send_error(MF_HTTP_ERR_SCHEMA_INVALID, "mqtt.broker required");
+            return;
+        }
+        if (!mf_mqtt_config_save(host, port, user, pass, devid[0] ? devid : nullptr)) {
+            http_send_error(MF_HTTP_ERR_STATE, "Failed to save MQTT config");
+            return;
+        }
+        mf_log_info("http", "mqtt config saved");
     }
-    if (!mf_net_config_save(ssid, pass)) {
-        http_send_error(MF_HTTP_ERR_STATE, "Failed to save credentials");
-        return;
-    }
-    mf_log_info("http", "wifi credentials saved; restarting");
+#endif
+
+    mf_log_info("http", "config apply; restarting");
     StaticJsonDocument<64> payload;
-    http_send_envelope(true, MF_HTTP_ACK_OK, "Rebooting to apply Wi-Fi", payload.as<JsonObject>());
+    http_send_envelope(true, MF_HTTP_ACK_OK, "Rebooting to apply config", payload.as<JsonObject>());
     delay(200);
     ESP.restart();
 }
@@ -298,6 +294,9 @@ static void handle_post_factory_reset() {
         return;
     }
     mf_net_config_clear();
+#if MF_MQTT_ENABLE
+    mf_mqtt_config_clear();
+#endif
     mf_session_clear();
     mf_log_info("http", "factory reset; rebooting");
     StaticJsonDocument<64> payload;
@@ -308,7 +307,8 @@ static void handle_post_factory_reset() {
 
 static void handle_not_implemented() {
     http_make_request_id();
-    http_send_error(MF_HTTP_ERR_NOT_IMPLEMENTED, "Endpoint not implemented in S6");
+    mf_cmd_result_t res = mf_cmd_not_implemented("Endpoint not implemented in this firmware phase");
+    http_send_cmd_result(&res);
 }
 
 static void route_request() {
@@ -340,17 +340,21 @@ static void route_request() {
         return;
     }
     if (uri == "/api/v1/cycle/pause" && method == HTTP_POST) {
-        handle_post_cycle("pause", mf_fsm_pause_cycle);
+        http_make_request_id();
+        mf_cmd_result_t res = mf_cmd_cycle_pause();
+        http_send_cmd_result(&res);
         return;
     }
     if (uri == "/api/v1/cycle/resume" && method == HTTP_POST) {
-        handle_post_cycle("resume", mf_fsm_resume_cycle);
+        http_make_request_id();
+        mf_cmd_result_t res = mf_cmd_cycle_resume();
+        http_send_cmd_result(&res);
         return;
     }
     if (uri == "/api/v1/cycle/stop-emergency" && method == HTTP_POST) {
         http_make_request_id();
-        mf_fsm_emergency_stop();
-        http_send_ok_empty(MF_HTTP_ACK_OK);
+        mf_cmd_result_t res = mf_cmd_cycle_stop_emergency();
+        http_send_cmd_result(&res);
         return;
     }
     if (uri == "/api/v1/config/apply" && method == HTTP_POST) {

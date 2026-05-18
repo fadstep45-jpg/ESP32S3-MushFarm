@@ -16,7 +16,10 @@
 // What this does NOT cover:
 //   - Real I2C drivers (Sensirion / MLX) — wait for hardware.
 //   - SD logging — requires card in slot.
-//   - Wi-Fi / HTTP / MQTT — separate sprints (S6/S7).
+//   - Wi-Fi / HTTP / MQTT transport — not exercised here (S6/S7 bench).
+//   - S7 cmd_dispatch + msg_dedup logic (no broker).
+
+#define MF_TEST_HOOKS 1
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -38,6 +41,9 @@
 #include "../mushfarm/mf_fsm.h"
 #include "../mushfarm/mf_fault_supervisor.h"
 #include "../mushfarm/mf_nvs_session.h"
+#include "../mushfarm/mf_cmd_dispatch.h"
+#include "../mushfarm/mf_msg_dedup.h"
+#include "../mushfarm/mf_api_codes.h"
 
 #include <math.h>
 
@@ -346,6 +352,57 @@ static void test_water_policy_transitions() {
     mf_water_set_simulated_present(-1);
 }
 
+// ----------------------- Suite 5: S7 cmd_dispatch + dedup -----------------------
+
+static void test_msg_dedup_basic_and_capacity() {
+    tcase("msg_dedup — seen/commit and ring capacity");
+    mf_msg_dedup_reset();
+    texpect_false(mf_msg_dedup_seen("abc"), "fresh id not seen");
+    mf_msg_dedup_commit("abc");
+    texpect_true(mf_msg_dedup_seen("abc"), "committed id seen");
+
+    char id[16];
+    for (uint32_t i = 0; i < MF_MSG_DEDUP_CAPACITY; ++i) {
+        snprintf(id, sizeof(id), "id%03u", (unsigned)i);
+        mf_msg_dedup_commit(id);
+    }
+    texpect_eq_int((long)mf_msg_dedup_test_entry_count(), (long)MF_MSG_DEDUP_CAPACITY,
+                   "ring at capacity");
+
+    mf_msg_dedup_commit("id_overflow");
+    texpect_true(mf_msg_dedup_seen("id_overflow"), "newest id retained");
+    texpect_false(mf_msg_dedup_seen("id000"), "oldest evicted after overflow");
+}
+
+static void test_msg_dedup_ttl_expiry() {
+    tcase("msg_dedup — TTL expiry after 24h uptime window");
+    mf_msg_dedup_reset();
+    mf_msg_dedup_commit("ttl_probe");
+    texpect_true(mf_msg_dedup_seen("ttl_probe"), "id visible before TTL");
+    mf_msg_dedup_test_advance_ms(MF_MSG_DEDUP_TTL_MS + 1000u);
+    texpect_false(mf_msg_dedup_seen("ttl_probe"), "id expired after TTL window");
+}
+
+static void test_cmd_dispatch_start_noop() {
+    tcase("cmd_dispatch — cycle/start in ACTIVE_RUN returns ACK_NOOP");
+    mf_mock_climate_set_scenario(MF_MOCK_SCENARIO_AUTO);
+    boot_into_active_run();
+    texpect_eq_int((long)mf_fsm_state(), (long)MF_STATE_ACTIVE_RUN, "in ACTIVE_RUN");
+
+    mf_cmd_result_t res = mf_cmd_cycle_start(nullptr);
+    texpect_true(res.ok, "noop result ok flag");
+    texpect_eq_str(res.code, MF_API_ACK_NOOP, "ACK_NOOP code");
+}
+
+static void test_cmd_dispatch_select_wrong_state() {
+    tcase("cmd_dispatch — recipe/select rejected outside IDLE_READY");
+    mf_mock_climate_set_scenario(MF_MOCK_SCENARIO_AUTO);
+    boot_into_active_run();
+    mf_cmd_result_t res = mf_cmd_recipe_select("embedded_demo");
+    texpect_false(res.ok, "select fails in ACTIVE_RUN");
+    texpect_eq_str(res.code, MF_API_ERR_STATE, "ERR_STATE");
+}
+
 // ----------------------- Entry point -----------------------
 
 void setup() {
@@ -383,6 +440,12 @@ void setup() {
 
     // --- Suite 4: Water policy ---
     test_water_policy_transitions();
+
+    // --- Suite 5: S7 command layer ---
+    test_msg_dedup_basic_and_capacity();
+    test_msg_dedup_ttl_expiry();
+    test_cmd_dispatch_start_noop();
+    test_cmd_dispatch_select_wrong_state();
 
     Serial.println();
     Serial.printf("===== Result: %d PASS, %d FAIL =====\n", g_pass, g_fail);

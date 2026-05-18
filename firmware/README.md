@@ -59,6 +59,15 @@
 - Чеклист и curl: [docs/architecture/s6-acceptance.md](../docs/architecture/s6-acceptance.md).
 - Флаги: `MF_WIFI_SOFTAP`, `MF_HTTP_API`, `MF_CLOCK_SNTP_ENABLED` в `mf_config.h`.
 
+## S7 — MQTT
+
+Модули: `mf_mqtt_config` (NVS broker), `mf_mqtt` (PubSubClient), `mf_cmd_dispatch` (общий с HTTP), `mf_msg_dedup`.
+
+- Provisioning: `POST /api/v1/config/apply` с `mqtt: { broker, port, username, password, device_id }` (вместе с `wifi` или после).
+- Топики: `mf/{device_id}/cmd/#`, ack на `mf/{device_id}/ack`, telemetry ~30 с, alerts `mf/{device_id}/alert`.
+- Чеклист: [docs/architecture/s7-acceptance.md](../docs/architecture/s7-acceptance.md).
+- Флаги: `MF_MQTT_ENABLE`, `MF_MQTT_TELEMETRY_MS` в `mf_config.h`.
+
 ## S5 — климат и арбитраж
 
 Модули: `mf_control_profile`, `mf_control_limits`, `mf_pid`, `mf_loop_rh` / `mf_loop_co2` / `mf_loop_temp`, `mf_climate_arbiter`, `mf_climate_trace`, обёртка `mf_climate`.

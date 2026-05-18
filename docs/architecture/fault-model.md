@@ -67,7 +67,7 @@ Named modes above are **documentation labels**. Runtime uses:
 | `DEG_SENSOR_TEMP` | `DEGRADED_RUN` after `evFaultNonFatal(MLX90614)` | `MF_WARN_MLX_FAIL` | `mf_loop_temp` disabled when `mf_mlx90614_fault_disconnected()` |
 | Water LOCKED (CRITICAL path) | `DEGRADED_RUN` after `evFaultNonFatal(WATER)` | `MF_WARN_WATER_FAIL` | `mf_water_policy` returns 0%; humidifier blocked |
 | `DEG_STORAGE` | `DEGRADED_RUN` (SD non-fatal) | `MF_WARN_SD_FAIL` | RAM logging; does not block sensor recovery |
-| `DEG_NETWORK` | (future S6/S7) | — | — |
+| `DEG_NETWORK` | MQTT offline (future full policy) | — | Local/AP control continues; alerts queued in RAM until broker up |
 
 `mf_fault_supervisor` edge-detects driver faults and publishes FSM events; a second sensor fault while already in `DEGRADED_RUN` still runs `act_persist_warn` (self-loop on `evFaultNonFatal`).
 

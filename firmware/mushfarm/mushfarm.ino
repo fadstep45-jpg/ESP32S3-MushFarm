@@ -35,6 +35,10 @@
 #if MF_HTTP_API
 #include "mf_http_api.h"
 #endif
+#if MF_MQTT_ENABLE
+#include "mf_mqtt.h"
+#include "mf_mqtt_config.h"
+#endif
 #include "mf_actuator_test.h"
 
 static void task_sensors() {
@@ -79,13 +83,16 @@ static void task_batch_flush() {
     mf_batch_logger_flush();
 }
 
-#if MF_WIFI_SOFTAP || MF_HTTP_API
+#if MF_WIFI_SOFTAP || MF_HTTP_API || MF_MQTT_ENABLE
 static void task_network() {
 #if MF_WIFI_SOFTAP
     mf_wifi_poll();
 #endif
 #if MF_HTTP_API
     mf_http_poll();
+#endif
+#if MF_MQTT_ENABLE
+    mf_mqtt_poll();
 #endif
     mf_actuator_test_poll();
 }
@@ -130,6 +137,9 @@ void setup() {
 #if MF_HTTP_API
     mf_http_init();
 #endif
+#if MF_MQTT_ENABLE
+    mf_mqtt_init();
+#endif
     if (mf_net_config_is_configured()) {
         mf_wifi_sta_begin();
         mf_fsm_boot_done_config_ok();
@@ -155,7 +165,7 @@ void setup() {
     mf_scheduler_add("climate", MF_TICK_CLIMATE_MS, task_climate);
     mf_scheduler_add("trace", MF_TICK_TRACE_MS, task_trace);
     mf_scheduler_add("batch_flush", MF_TICK_BATCH_FLUSH_MS, task_batch_flush);
-#if MF_WIFI_SOFTAP || MF_HTTP_API
+#if MF_WIFI_SOFTAP || MF_HTTP_API || MF_MQTT_ENABLE
     mf_scheduler_add("network", MF_TICK_NETWORK_MS, task_network);
 #endif
 

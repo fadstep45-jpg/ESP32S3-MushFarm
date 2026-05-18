@@ -13,6 +13,7 @@ everything runs against the mock pipeline (`MF_SENSORS_MOCK=1`) and the
 | Fault supervisor | Sensor disconnect injection → ACTIVE_RUN → DEGRADED_RUN; recovery injection → RECOVERY_VALIDATED → ACTIVE_RUN; water LOCKED publishes nonfatal(WATER); second sensor fault while already DEGRADED_RUN still sets its warn flag |
 | FSM core | pause/resume, emergency latch + ACK, latch rejects pause, long-press → SETUP_AP from IDLE_READY |
 | Water policy | NORMAL → RESERVE on first LOW; mid-reserve restore → NORMAL |
+| S7 cmd_dispatch + dedup | `msg_id` LRU ring + TTL expiry; `cycle/start` NOOP in ACTIVE_RUN; `recipe/select` ERR_STATE outside IDLE_READY |
 
 Each test prints `PASS` or `FAIL` and the sketch ends with `===== Result: N PASS, M FAIL =====`.
 

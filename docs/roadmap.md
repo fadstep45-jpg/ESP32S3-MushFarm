@@ -64,6 +64,7 @@ flowchart LR
 #### S7 — MQTT
 - **Цель:** удаленное управление по `docs/api/mqtt-contract.md`.
 - **DoD:** ack + dedup `msg_id` + очередь offline без дублей side effects.
+- **Фаза A (код):** `mf_mqtt`, `mf_mqtt_config`, `mf_cmd_dispatch`, `mf_msg_dedup` — см. [s7-acceptance.md](architecture/s7-acceptance.md).
 
 #### S8 — Логи, SD, время
 - **Цель:** наблюдаемость и корректное время.

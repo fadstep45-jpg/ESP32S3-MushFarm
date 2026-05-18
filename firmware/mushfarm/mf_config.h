@@ -25,8 +25,22 @@
 #define MF_TICK_NETWORK_MS         300u
 #define MF_HTTP_AUTH_ENABLED       0
 
-// Remote MQTT client.
-#define MF_MQTT_ENABLE 0
+// Remote MQTT client (S7 — docs/architecture/s7-acceptance.md).
+#ifndef MF_MQTT_ENABLE
+#define MF_MQTT_ENABLE              1
+#endif
+#define MF_MQTT_TELEMETRY_MS        30000u
+#define MF_MQTT_RECONNECT_BASE_MS   30000u
+#define MF_MQTT_RECONNECT_MAX_MS    120000u
+#define MF_MQTT_ALERT_QUEUE_SIZE    12u
+#define MF_MQTT_BUFFER_SIZE         1024u
+#define MF_MQTT_AUTH_ENABLED        0
+#define MF_MSG_DEDUP_CAPACITY       256u
+#define MF_MSG_DEDUP_TTL_MS         (24u * 3600u * 1000u)
+
+#ifndef MF_TEST_HOOKS
+#define MF_TEST_HOOKS 0
+#endif
 
 // SD card FAT logging (FAT mount + append). RAM batch logger always runs.
 #define MF_SD_LOG_ENABLE 0

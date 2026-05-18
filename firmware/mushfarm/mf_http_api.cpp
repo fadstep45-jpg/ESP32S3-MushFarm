@@ -26,7 +26,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
-#include <ESP.h>
+#include <Esp.h>  // ESP32 core 3.x: Esp.h (case-sensitive on Linux CI)
 #include <string.h>
 
 static WebServer s_server(80);

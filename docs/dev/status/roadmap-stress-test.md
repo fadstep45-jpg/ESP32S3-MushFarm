@@ -1,6 +1,6 @@
 # Стресс-тест роадмапа от руководителя и переработанный план
 
-> Аналитический документ. Актуальный единый roadmap: [roadmap.md](roadmap.md).
+> Аналитический документ. Актуальный единый roadmap: [roadmap.md](../../roadmap.md).
 
 ## Цель документа
 
@@ -26,8 +26,8 @@
 - визуальные/акустические проверки (свет, вентилятор, пар) подтверждать оператором.
 
 Связанные документы:
-- [architecture/fault-model.md](architecture/fault-model.md)
-- [ops/slo-and-alerting.md](ops/slo-and-alerting.md)
+- [architecture/fault-model.md](../../architecture/fault-model.md)
+- [ops/slo-and-alerting.md](../../ops/slo-and-alerting.md)
 
 ### 2) Ручной сервисный контур без safety-ограничений опасен
 
@@ -39,16 +39,16 @@
 - все ручные команды запускать с timeout + автоматическим rollback.
 
 Связанные документы:
-- [architecture/service-mode-contract.md](architecture/service-mode-contract.md)
-- [architecture/control-arbitration.md](architecture/control-arbitration.md)
+- [architecture/service-mode-contract.md](../../architecture/service-mode-contract.md)
+- [architecture/control-arbitration.md](../../architecture/control-arbitration.md)
 
 ### 3) "Голый скелет FSM" недостаточен
 
 FSM-каркас должен включать не только переходы, но и guards, идемпотентность, аварийную защелку, действия входа/выхода, resume после power-loss.
 
 Связанные документы:
-- [architecture/state-machine.md](architecture/state-machine.md)
-- [architecture/requirements-traceability.md](architecture/requirements-traceability.md)
+- [architecture/state-machine.md](../../architecture/state-machine.md)
+- [architecture/requirements-traceability.md](../../architecture/requirements-traceability.md)
 
 ### 4) Параллельное управление RH и CO2 требует кооперативного арбитража
 
@@ -58,7 +58,7 @@ FSM-каркас должен включать не только переход�
 - использовать cooperative arbitration, hard limits и anti-oscillation как baseline, а не "опционально потом".
 
 Связанные документы:
-- [architecture/control-arbitration.md](architecture/control-arbitration.md)
+- [architecture/control-arbitration.md](../../architecture/control-arbitration.md)
 
 ### 5) Сеть, время и журналирование нельзя откладывать на "косметику"
 
@@ -67,15 +67,15 @@ AP/MQTT, NTP/TZ, ring-buffer/SD-flush — это часть эксплуатац
 Связанные документы:
 - [api/ap-contract.md](api/ap-contract.md)
 - [api/mqtt-contract.md](api/mqtt-contract.md)
-- [architecture/threat-model-and-time.md](architecture/threat-model-and-time.md)
-- [ops/slo-and-alerting.md](ops/slo-and-alerting.md)
+- [architecture/threat-model-and-time.md](../../architecture/threat-model-and-time.md)
+- [ops/slo-and-alerting.md](../../ops/slo-and-alerting.md)
 
 ### 6) Тестирование должно быть левее по timeline
 
 Модульные и fault-injection проверки нужны по спринтам, не только в финале.
 
 Связанные документы:
-- [architecture/fault-model.md](architecture/fault-model.md)
+- [architecture/fault-model.md](../../architecture/fault-model.md)
 - [BETA_CHECKLIST.md](BETA_CHECKLIST.md)
 
 ## Переработанный roadmap: 5 фаз × 10 спринтов
@@ -135,7 +135,7 @@ flowchart LR
 
 ## Сквозные правила
 
-- Любое изменение поведения синхронизировать с [architecture/requirements-traceability.md](architecture/requirements-traceability.md).
+- Любое изменение поведения синхронизировать с [architecture/requirements-traceability.md](../../architecture/requirements-traceability.md).
 - Сеть не ускорять раньше стабилизации локального цикла датчики → FSM → приводы.
 - Все команды управления (Serial/AP/MQTT) делать с защитой от повторов, таймаутами и rollback.
 - Тесты, в том числе fault-injection, выполнять непрерывно по спринтам.

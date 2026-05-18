@@ -14,8 +14,9 @@
 
 ## Документация
 
-- Архитектура: `docs/architecture/`
-- API: `docs/api/`
-- Схема рецептов: `docs/recipes/recipe-schema-v1.md`
-- Чеклист бета-тестирования: `docs/BETA_CHECKLIST.md`
-- Единый roadmap проекта: `docs/roadmap.md`
+См. [docs/README.md](docs/README.md). Кратко:
+
+- Архитектура: [docs/architecture/](docs/architecture/)
+- Временная документация разработки (удалить в проде): [docs/dev/](docs/dev/)
+- API: [docs/api/](docs/api/)
+- Roadmap: [docs/roadmap.md](docs/roadmap.md)

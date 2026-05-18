@@ -1,6 +1,6 @@
 # S7 acceptance — MQTT remote management
 
-Normative API: [mqtt-contract.md](../api/mqtt-contract.md). Firmware: `mf_mqtt`, `mf_mqtt_config`, `mf_cmd_dispatch`, `mf_msg_dedup`.
+Normative API: [mqtt-contract.md](../../api/mqtt-contract.md). Firmware: `mf_mqtt`, `mf_mqtt_config`, `mf_cmd_dispatch`, `mf_msg_dedup`.
 
 ## Policy
 

@@ -5,7 +5,7 @@
 // and prints a PASS/FAIL summary. loop() is empty.
 //
 // What this covers (without hardware):
-//   1) Climate arbiter golden vectors GV1-GV9 (docs/architecture/s5-acceptance.md).
+//   1) Climate arbiter golden vectors GV1-GV9 (docs/dev/acceptance/s5-acceptance.md).
 //   2) Fault supervisor edge detection: sensor disconnect → ACTIVE_RUN →
 //      DEGRADED_RUN; recovery streak → RECOVERY_VALIDATED → ACTIVE_RUN.
 //   3) Water policy state machine: NORMAL → RESERVE → PULSE_ON → PULSE_OFF

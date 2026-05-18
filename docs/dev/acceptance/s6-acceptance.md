@@ -1,6 +1,6 @@
 # S6 acceptance — AP/HTTP local management
 
-Normative API: [ap-contract.md](../api/ap-contract.md). Firmware: `mf_net_config`, `mf_wifi`, `mf_http_api`, `mf_actuator_test`.
+Normative API: [ap-contract.md](../../api/ap-contract.md). Firmware: `mf_net_config`, `mf_wifi`, `mf_http_api`, `mf_actuator_test`.
 
 ## Policy
 

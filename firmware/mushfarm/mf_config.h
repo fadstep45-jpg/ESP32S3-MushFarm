@@ -17,7 +17,7 @@
 #define MF_WIFI_SOFTAP 1
 #define MF_HTTP_API    1
 
-// S6 Wi-Fi / HTTP (see docs/architecture/s6-acceptance.md).
+// S6 Wi-Fi / HTTP (see docs/dev/acceptance/s6-acceptance.md).
 #define MF_WIFI_AP_SSID            "MushFarm_Setup"
 #define MF_WIFI_AP_IP              "192.168.4.1"
 #define MF_WIFI_STA_TIMEOUT_MS     15000u
@@ -25,7 +25,7 @@
 #define MF_TICK_NETWORK_MS         300u
 #define MF_HTTP_AUTH_ENABLED       0
 
-// Remote MQTT client (S7 — docs/architecture/s7-acceptance.md).
+// Remote MQTT client (S7 — docs/dev/acceptance/s7-acceptance.md).
 #ifndef MF_MQTT_ENABLE
 #define MF_MQTT_ENABLE              1
 #endif
@@ -104,5 +104,5 @@
 #define MF_ARB_SEQ_ALTERNATE_TICKS 4u
 #define MF_CLIMATE_TRACE_FULL_EVERY_N 10u
 
-// S5 mock golden-vector scenario (see docs/architecture/s5-acceptance.md).
+// S5 mock golden-vector scenario (see docs/dev/acceptance/s5-acceptance.md).
 #define MF_MOCK_CLIMATE_SCENARIO 0

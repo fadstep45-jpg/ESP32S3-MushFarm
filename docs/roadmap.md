@@ -52,19 +52,19 @@ flowchart LR
 #### S5 — Климат и арбитраж
 - **Цель:** рабочий контур RH/CO2 с hard limits.
 - **DoD:** контур стабилизируется на стенде, арбитраж соответствует `docs/architecture/control-arbitration.md`.
-- **Фаза A (код):** модули `mf_loop_*`, `mf_climate_arbiter`, embedded profile — см. чеклист [s5-acceptance.md](architecture/s5-acceptance.md).
+- **Фаза A (код):** модули `mf_loop_*`, `mf_climate_arbiter`, embedded profile — см. чеклист [s5-acceptance.md](dev/acceptance/s5-acceptance.md).
 - **Фаза B (стенд):** PID tuning + soak 4–8 ч — после сборки hardware.
 
 #### S6 — AP/HTTP
 - **Цель:** локальное управление по `docs/api/ap-contract.md`.
 - **DoD:** status/sensors/recipe endpoints работают с телефона/ноута.
 - **DoD (дополнительно):** реализован и проверен сценарий `first-boot -> AP -> ввод/сохранение Wi-Fi credentials -> apply/reboot -> проверка подключения`.
-- **Фаза A (код):** `mf_net_config`, `mf_wifi`, `mf_http_api` — см. [s6-acceptance.md](architecture/s6-acceptance.md).
+- **Фаза A (код):** `mf_net_config`, `mf_wifi`, `mf_http_api` — см. [s6-acceptance.md](dev/acceptance/s6-acceptance.md).
 
 #### S7 — MQTT
 - **Цель:** удаленное управление по `docs/api/mqtt-contract.md`.
 - **DoD:** ack + dedup `msg_id` + очередь offline без дублей side effects.
-- **Фаза A (код):** `mf_mqtt`, `mf_mqtt_config`, `mf_cmd_dispatch`, `mf_msg_dedup` — см. [s7-acceptance.md](architecture/s7-acceptance.md).
+- **Фаза A (код):** `mf_mqtt`, `mf_mqtt_config`, `mf_cmd_dispatch`, `mf_msg_dedup` — см. [s7-acceptance.md](dev/acceptance/s7-acceptance.md).
 
 #### S8 — Логи, SD, время
 - **Цель:** наблюдаемость и корректное время.

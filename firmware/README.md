@@ -56,7 +56,7 @@
 
 - Без сохранённых creds: boot → `SETUP_AP` + AP `MushFarm_Setup` @ `192.168.4.1`.
 - Provisioning: `POST /api/v1/config/apply` с `{"wifi":{"ssid","password"}}` → reboot.
-- Чеклист и curl: [docs/architecture/s6-acceptance.md](../docs/architecture/s6-acceptance.md).
+- Чеклист и curl: [docs/dev/acceptance/s6-acceptance.md](../docs/dev/acceptance/s6-acceptance.md).
 - Флаги: `MF_WIFI_SOFTAP`, `MF_HTTP_API`, `MF_CLOCK_SNTP_ENABLED` в `mf_config.h`.
 
 ## S7 — MQTT
@@ -65,7 +65,7 @@
 
 - Provisioning: `POST /api/v1/config/apply` с `mqtt: { broker, port, username, password, device_id }` (вместе с `wifi` или после).
 - Топики: `mf/{device_id}/cmd/#`, ack на `mf/{device_id}/ack`, telemetry ~30 с, alerts `mf/{device_id}/alert`.
-- Чеклист: [docs/architecture/s7-acceptance.md](../docs/architecture/s7-acceptance.md).
+- Чеклист: [docs/dev/acceptance/s7-acceptance.md](../docs/dev/acceptance/s7-acceptance.md).
 - Флаги: `MF_MQTT_ENABLE`, `MF_MQTT_TELEMETRY_MS` в `mf_config.h`.
 
 ## S5 — климат и арбитраж
@@ -75,7 +75,7 @@
 - Тик климата: `MF_TICK_CLIMATE_MS` (2 с) в `mf_config.h`.
 - Setpoints/limitы — embedded-профиль по стадии demo (`mf_control_profile_load_demo_stage`), без YAML на устройстве.
 - В RAM ring (`mf_batch_logger`) каждый climate-tick пишется compact-строка `arb …`; полный trace — при смене `arb_reason_code` или каждые 10 тиков.
-- Mock golden vectors: `MF_MOCK_CLIMATE_SCENARIO` в `mf_config.h` (см. [docs/architecture/s5-acceptance.md](../docs/architecture/s5-acceptance.md)).
+- Mock golden vectors: `MF_MOCK_CLIMATE_SCENARIO` в `mf_config.h` (см. [docs/dev/acceptance/s5-acceptance.md](../docs/dev/acceptance/s5-acceptance.md)).
 
 ## Камера
 

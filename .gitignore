@@ -1,4 +1,6 @@
 # Arduino IDE / arduino-cli build output
+/build/
+/build-*/
 firmware/mushfarm/build/
 firmware/build/
 **/*.bin

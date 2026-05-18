@@ -286,7 +286,7 @@ static void flush_alert_queue() {
         doc["severity"] = s_alert_queue[i].severity;
         doc["code"] = s_alert_queue[i].code;
         doc["detail"] = s_alert_queue[i].detail;
-        doc["ts"] = mf_clock_unix_seconds();
+        doc["ts"] = (int32_t)mf_clock_unix_seconds();
         char out[256];
         if (serializeJson(doc, out, sizeof(out)) > 0) {
             s_mqtt.publish(s_topic_alert, out, false);
@@ -303,7 +303,7 @@ static void publish_telemetry() {
     s_last_telemetry_ms = now;
 
     StaticJsonDocument<512> doc;
-    doc["ts"] = mf_clock_unix_seconds();
+    doc["ts"] = (int32_t)mf_clock_unix_seconds();
     doc["state"] = mf_fsm_state_str(mf_fsm_state());
     doc["warn_flags"] = mf_fsm_warn_flags();
     doc["recipe_id"] = mf_fsm_selected_recipe_id();
@@ -399,7 +399,7 @@ void mf_mqtt_alert_publish(const char *severity, const char *code, const char *d
         doc["severity"] = severity;
         doc["code"] = code;
         doc["detail"] = detail;
-        doc["ts"] = mf_clock_unix_seconds();
+        doc["ts"] = (int32_t)mf_clock_unix_seconds();
         build_topics();
         char out[256];
         if (serializeJson(doc, out, sizeof(out)) > 0) {

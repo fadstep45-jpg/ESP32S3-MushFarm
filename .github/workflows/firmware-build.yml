@@ -54,21 +54,28 @@ jobs:
 
       - name: Install libraries
         run: |
+          set -euo pipefail
           # Avoid duplicate ArduinoJson folders breaking lib install / compile.
           rm -rf "$HOME/Arduino/libraries/ArduinoJson"*
-          grep -v '^[[:space:]]*#' firmware/arduino-libs.txt | grep -v '^[[:space:]]*$' | while read -r spec; do
-            arduino-cli lib install "$spec"
+          mapfile -t libs < <(grep -v '^[[:space:]]*#' firmware/arduino-libs.txt | grep -v '^[[:space:]]*$' || true)
+          for spec in "${libs[@]}"; do
+            echo "Installing ${spec}..."
+            arduino-cli lib install "${spec}"
           done
+          arduino-cli lib list
 
       - name: Compile sketch
         run: |
-          set -o pipefail
-          arduino-cli compile \
+          set -euo pipefail
+          if ! arduino-cli compile \
             --clean \
             --fqbn "${FQBN}" \
             --output-dir build \
             --warnings more \
-            "${SKETCH_DIR}" 2>&1 | tee compile.log
+            "${SKETCH_DIR}" 2>&1 | tee compile.log; then
+            echo "::error title=Compile failed::$(tail -n 20 compile.log | tr '\n' '; ')"
+            exit 1
+          fi
 
       - name: Report compile failure
         if: failure()

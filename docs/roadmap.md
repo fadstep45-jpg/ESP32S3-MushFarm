@@ -59,6 +59,7 @@ flowchart LR
 - **Цель:** локальное управление по `docs/api/ap-contract.md`.
 - **DoD:** status/sensors/recipe endpoints работают с телефона/ноута.
 - **DoD (дополнительно):** реализован и проверен сценарий `first-boot -> AP -> ввод/сохранение Wi-Fi credentials -> apply/reboot -> проверка подключения`.
+- **Фаза A (код):** `mf_net_config`, `mf_wifi`, `mf_http_api` — см. [s6-acceptance.md](architecture/s6-acceptance.md).
 
 #### S7 — MQTT
 - **Цель:** удаленное управление по `docs/api/mqtt-contract.md`.

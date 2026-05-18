@@ -50,6 +50,15 @@
 
 Нормативная заметка для Arduino IDE: [docs/ops/arduino-partition-ota.md](../docs/ops/arduino-partition-ota.md).
 
+## S6 — AP/HTTP
+
+Модули: `mf_net_config` (NVS Wi‑Fi), `mf_wifi` (SoftAP только в `SETUP_AP`, STA в штатном режиме), `mf_http_api` (`WebServer` на порту 80), `mf_actuator_test`.
+
+- Без сохранённых creds: boot → `SETUP_AP` + AP `MushFarm_Setup` @ `192.168.4.1`.
+- Provisioning: `POST /api/v1/config/apply` с `{"wifi":{"ssid","password"}}` → reboot.
+- Чеклист и curl: [docs/architecture/s6-acceptance.md](../docs/architecture/s6-acceptance.md).
+- Флаги: `MF_WIFI_SOFTAP`, `MF_HTTP_API`, `MF_CLOCK_SNTP_ENABLED` в `mf_config.h`.
+
 ## S5 — климат и арбитраж
 
 Модули: `mf_control_profile`, `mf_control_limits`, `mf_pid`, `mf_loop_rh` / `mf_loop_co2` / `mf_loop_temp`, `mf_climate_arbiter`, `mf_climate_trace`, обёртка `mf_climate`.

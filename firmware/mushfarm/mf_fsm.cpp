@@ -1,4 +1,6 @@
 #include "mf_fsm.h"
+#include "mf_config.h"
+#include "mf_wifi.h"
 #include "mf_control_limits.h"
 #include "mf_log.h"
 #include "mf_clock.h"
@@ -189,7 +191,10 @@ static bool act_start_cycle(const mf_fsm_event_ctx_t *ctx) {
 static bool act_apply_config(const mf_fsm_event_ctx_t *ctx) {
     (void)ctx;
     s_config_ready = true;
-    mf_log_info("fsm", "config applied (network restart deferred to S6)");
+#if MF_WIFI_SOFTAP
+    mf_wifi_request_restart();
+#endif
+    mf_log_info("fsm", "config applied; Wi-Fi restart requested");
     return true;
 }
 

@@ -1,4 +1,5 @@
 #include "mf_climate.h"
+#include "mf_actuator_test.h"
 #include "mf_actuators.h"
 #include "mf_fsm.h"
 #include "mf_control_profile.h"
@@ -35,6 +36,10 @@ static bool rh_co2_both_missing() {
 }
 
 void mf_climate_tick() {
+    if (mf_actuator_test_blocks_climate()) {
+        return;
+    }
+
     mf_runtime_state_t st = mf_fsm_state();
 
     if (st == MF_STATE_EMERGENCY_STOP) {

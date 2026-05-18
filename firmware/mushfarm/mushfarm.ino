@@ -28,6 +28,14 @@
 #include "mf_climate_trace.h"
 #include "mf_control_profile.h"
 #include "mf_camera.h"
+#include "mf_net_config.h"
+#if MF_WIFI_SOFTAP
+#include "mf_wifi.h"
+#endif
+#if MF_HTTP_API
+#include "mf_http_api.h"
+#endif
+#include "mf_actuator_test.h"
 
 static void task_sensors() {
     mf_scd41_poll();
@@ -71,6 +79,18 @@ static void task_batch_flush() {
     mf_batch_logger_flush();
 }
 
+#if MF_WIFI_SOFTAP || MF_HTTP_API
+static void task_network() {
+#if MF_WIFI_SOFTAP
+    mf_wifi_poll();
+#endif
+#if MF_HTTP_API
+    mf_http_poll();
+#endif
+    mf_actuator_test_poll();
+}
+#endif
+
 void setup() {
     mf_log_init(115200);
     mf_log_info("boot", "MushFarm %s git=%s", MF_FW_VERSION, MF_GIT_SHORT_SHA);
@@ -103,7 +123,22 @@ void setup() {
     mf_control_profile_load_defaults();
 
     mf_fsm_resume_restore_from_nvs();
+
+#if MF_WIFI_SOFTAP
+    mf_net_config_load();
+    mf_wifi_init();
+#if MF_HTTP_API
+    mf_http_init();
+#endif
+    if (mf_net_config_is_configured()) {
+        mf_wifi_sta_begin();
+        mf_fsm_boot_done_config_ok();
+    } else {
+        mf_fsm_boot_done_config_missing();
+    }
+#else
     mf_fsm_boot_done_config_ok();
+#endif
 
 #if MF_AUTO_DEMO_CYCLE
     if (mf_fsm_state() == MF_STATE_IDLE_READY) {
@@ -120,8 +155,11 @@ void setup() {
     mf_scheduler_add("climate", MF_TICK_CLIMATE_MS, task_climate);
     mf_scheduler_add("trace", MF_TICK_TRACE_MS, task_trace);
     mf_scheduler_add("batch_flush", MF_TICK_BATCH_FLUSH_MS, task_batch_flush);
+#if MF_WIFI_SOFTAP || MF_HTTP_API
+    mf_scheduler_add("network", MF_TICK_NETWORK_MS, task_network);
+#endif
 
-    mf_log_info("boot", "ready");
+    mf_log_info("boot", "ready state=%s", mf_fsm_state_str(mf_fsm_state()));
 }
 
 void loop() {

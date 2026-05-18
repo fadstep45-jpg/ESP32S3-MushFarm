@@ -13,9 +13,17 @@
 // Disable on real hardware to use the I2C drivers.
 #define MF_SENSORS_MOCK 1
 
-// Local management/HTTP API. SoftAP is created on boot when enabled.
+// Local management/HTTP API. SoftAP only while FSM is in SETUP_AP.
 #define MF_WIFI_SOFTAP 1
 #define MF_HTTP_API    1
+
+// S6 Wi-Fi / HTTP (see docs/architecture/s6-acceptance.md).
+#define MF_WIFI_AP_SSID            "MushFarm_Setup"
+#define MF_WIFI_AP_IP              "192.168.4.1"
+#define MF_WIFI_STA_TIMEOUT_MS     15000u
+#define MF_WIFI_RECONNECT_MS       30000u
+#define MF_TICK_NETWORK_MS         300u
+#define MF_HTTP_AUTH_ENABLED       0
 
 // Remote MQTT client.
 #define MF_MQTT_ENABLE 0
@@ -54,7 +62,7 @@
 // Boot sets TZ via setenv only; SNTP (configTzTime) stays off until S6
 // enables MF_CLOCK_SNTP_ENABLED and calls mf_clock_start_sntp() after
 // Wi-Fi is up — avoids linking lwIP hooks without the Network library.
-#define MF_CLOCK_SNTP_ENABLED    0
+#define MF_CLOCK_SNTP_ENABLED    1
 #define MF_CLOCK_TZ_POSIX        "MSK-3"
 #define MF_CLOCK_NTP_PRIMARY     "pool.ntp.org"
 #define MF_CLOCK_NTP_SECONDARY   "time.google.com"

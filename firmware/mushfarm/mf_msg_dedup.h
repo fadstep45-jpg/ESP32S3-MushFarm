@@ -2,6 +2,7 @@
 
 #include "mf_config.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 void mf_msg_dedup_init();
 void mf_msg_dedup_reset();

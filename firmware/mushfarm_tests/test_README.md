@@ -15,6 +15,8 @@ everything runs against the mock pipeline (`MF_SENSORS_MOCK=1`) and the
 | Water policy | NORMAL → RESERVE on first LOW; mid-reserve restore → NORMAL |
 | S7 cmd_dispatch + dedup | `msg_id` LRU ring + TTL expiry; `cycle/start` NOOP in ACTIVE_RUN; `recipe/select` ERR_STATE outside IDLE_READY |
 
+Shims `src_msg_dedup.cpp` and `src_wifi.cpp` pull in dedup test hooks (`MF_TEST_HOOKS`) and Wi‑Fi stubs used by FSM (`mf_wifi_request_restart`).
+
 Each test prints `PASS` or `FAIL` and the sketch ends with `===== Result: N PASS, M FAIL =====`.
 
 ## How to build
@@ -40,7 +42,10 @@ into its own translation unit so file-local `static` variables (e.g. each
 file has its own `s_state` / `s_ok` / `s_inited`) do not collide.
 
 When new modules are added to `firmware/mushfarm/`, add a matching
-`src_<name>.cpp` shim here if the tests reference that module.
+`src_<name>.cpp` shim here if the tests reference that module. If the module
+needs compile flags (e.g. `MF_TEST_HOOKS`, `MF_MQTT_ENABLE 0`), define them
+**before** the `#include "../mushfarm/..."` line in the shim — not only in
+`mushfarm_tests.ino`.
 
 ## Limitations
 
